@@ -12,7 +12,7 @@
 // Node :
 //
 //   // Dans le navigateur (onglet Debug › « Vérifier la livraison ») :
-//   const { verifier } = await import("./src/verifier.mjs");
+//   const { verifier } = await import("./verifier.mjs");
 //   const { files } = await buildExport();
 //   const r = await verifier({
 //     fichiers: files,

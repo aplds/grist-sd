@@ -46,7 +46,17 @@ Deux modes de fonctionnement, choisis automatiquement au chargement :
 | Onglet de navigateur / GitHub Pages | Autonome | `localStorage` du navigateur + export/import JSON |
 | Widget personnalisé dans un document Grist | Grist | Tables du document Grist (lecture **et** écriture, selon le rôle) |
 
-> Les données livrées avec l'application sont **fictives**. Elles servent
+> Les données livrées avec l'application sont **fictives**.
+
+## Dépôt et déploiement
+
+Le code vit dans le dépôt public aplds/grist-sd : les sources sont servies
+telles quelles par GitHub Pages à l’adresse
+https://aplds.github.io/grist-sd/ (mode autonome). Le même code, sans
+modification, sert de widget personnalisé Grist : dans un document Grist,
+l’onglet « Widget » de la configuration du widget personnalisé reçoit cette
+même adresse, et l’outil détecte le document au chargement. Licence :
+GPL-2.0 (voir LICENSE). Elles servent
 > uniquement à montrer le fonctionnement de l'outil.
 >
 > **Environnement** : la page se déclare « recette » ou « production »
@@ -88,7 +98,7 @@ modestes et les réseaux contraints : elle se construit sans installation avec
 Pour l'exploiter, **avant chaque livraison**, vérifiez la syntaxe des modules et
 lancez les tests (`tests/README.md`), puis reportez la version dans
 `CHANGELOG.md`. Le geste se fait d'un seul appel — « Vérifier la livraison »
-dans l'onglet **Debug**, ou `src/verifier.mjs` en ligne de commande (NC-0025) :
+dans l'onglet **Debug**, ou `verifier.mjs` en ligne de commande (NC-0025) :
 la syntaxe de tous les modules est analysée, le harnais peut être exécuté dans
 la foulée, et le rapport se recopie dans le journal des livraisons.
 
@@ -192,7 +202,7 @@ Trois points commandent la conversion des valeurs, et méritent d'être connus :
 #### Champs de fichier : les deux pièges traités dans `app.js`
 
 Les champs `<input type="file">` sont pris en charge par `fichierDuChamp`
-(`src/app.js`), que les événements `input` **et** `change` appellent :
+(`app.js`), que les événements `input` **et** `change` appellent :
 
 - `change` est déclenché par tous les navigateurs, `input` seulement par
   certains **pour un champ de fichier**. S'en remettre au seul `input` revient
@@ -3589,7 +3599,7 @@ que sur ce qui ne l'est pas, et relève les non-conformités — majeures ou
 mineures — pour le prochain audit. Un audit représente au moins une heure de
 travail.
 
-Trois fichiers, sous `src/audit/` :
+Trois fichiers, sous `audit/` :
 
 | Fichier | Rôle |
 | --- | --- |

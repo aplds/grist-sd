@@ -41,12 +41,15 @@ const FACES = ["normal", "bold", "italics", "bolditalics"];
 
 import { DSFR_FONT } from "./dependances.js";
 
+/** Adresse d un fichier de police du depot (voir README.md pour la source). */
+const urlFonte = (nom) => new URL("./assets/fonts/" + nom, import.meta.url).href;
+
 const POLICES = {
   "Public Sans": {
-    normal: { fichier: "PublicSans-Regular.ttf", url: "https://user.uploads.dev/file/338411ef30ab6a458c8a863697fd686e.ttf" },
-    bold: { fichier: "PublicSans-Bold.ttf", url: "https://user.uploads.dev/file/c32157be07cb5f0e2bb001cab2450628.ttf" },
-    italics: { fichier: "PublicSans-Italic.ttf", url: "https://user.uploads.dev/file/91ba1d19cfa6600770bd0363dfe22997.ttf" },
-    bolditalics: { fichier: "PublicSans-BoldItalic.ttf", url: "https://user.uploads.dev/file/8bd592273534001b8886f93d7ce88fe0.ttf" },
+    normal: { fichier: "PublicSans-Regular.ttf", url: urlFonte("PublicSans-Regular.ttf") },
+    bold: { fichier: "PublicSans-Bold.ttf", url: urlFonte("PublicSans-Bold.ttf") },
+    italics: { fichier: "PublicSans-Italic.ttf", url: urlFonte("PublicSans-Italic.ttf") },
+    bolditalics: { fichier: "PublicSans-BoldItalic.ttf", url: urlFonte("PublicSans-BoldItalic.ttf") },
   },
   Marianne: {
     normal: { fichier: "Marianne-Regular.ttf", url: DSFR("Marianne-Regular"), woff: true },

@@ -360,7 +360,7 @@ Un fichier qui ne peut pas être lu (format inconnu, fichier vide, classeur ou
 base illisibles, `.grist` qui n'est pas une base SQLite) **n'échoue jamais en
 silence** : le message exact est conservé dans `state.import.erreur` et affiché
 sous le bouton de choix, avec la liste des formats acceptés. La prise en charge
-des champs de fichier (`fichierDuChamp`, `src/app.js`) écoute `change` autant
+des champs de fichier (`fichierDuChamp`, `app.js`) écoute `change` autant
 que `input` — un champ de fichier ne déclenche pas `input` partout — et ne vide
 le champ qu'après la lecture, le vider avant libérant le fichier dans plusieurs
 navigateurs. Voir `README.md` § 2 pour le détail.

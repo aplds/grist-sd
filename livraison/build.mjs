@@ -3,7 +3,7 @@
 // Un seul outil, chargé sans installation : `esbuild-wasm`, pris sur esm.sh.
 // Le script ne présume pas de son environnement : on lui **donne** de quoi lire
 // les fichiers, ce qui le fait tourner aussi bien dans un navigateur (dossier
-// `src/` servi) que dans un atelier ou un script Node.
+// le dossier du site servi) que dans un atelier ou un script Node.
 //
 //   import { build } from "./build.mjs";
 //   const { js, css, stats } = await build({ lireFichier: async (p) => ... });
@@ -24,12 +24,12 @@ function normaliser(chemin) {
 
 /**
  * Construit la variante. `lireFichier(chemin)` doit rendre le **texte** d'un
- * fichier du dépôt (chemin relatif à la racine, par exemple `src/app.js`).
+ * fichier du dépôt (chemin relatif à la racine, par exemple `app.js`).
  */
 export async function build({
   lireFichier,
-  entree = "src/app.js",
-  cssSource = "src/styles.css",
+  entree = "app.js",
+  cssSource = "styles.css",
   esbuildUrl = "https://esm.sh/esbuild-wasm@0.21.5",
   wasmURL = "https://esm.sh/esbuild-wasm@0.21.5/esbuild.wasm",
 } = {}) {
@@ -54,8 +54,6 @@ export async function build({
         let chemin = args.path;
         if (chemin.startsWith(".")) {
           chemin = `${args.importer.replace(/\/[^/]*$/, "")}/${chemin}`;
-        } else if (!chemin.startsWith("src/")) {
-          chemin = `src/${chemin}`;
         }
         return { path: normaliser(chemin), namespace: racine.name };
       });

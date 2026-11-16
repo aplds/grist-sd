@@ -7,7 +7,7 @@
 //
 // Il s'exécute **dans la page de l'outil** (l'application doit être chargée) :
 //
-//   const { fumerEcrans } = await import("./src/tests/ecrans.test.js");
+//   const { fumerEcrans } = await import("./tests/ecrans.test.js");
 //   await fumerEcrans();
 //
 // L'appel déplace la page d'un écran à l'autre, puis la ramène à son point de
@@ -127,7 +127,7 @@ export async function fumerEcrans({ attente = 300 } = {}) {
  * neutralisé (`inert`), le focus entre dans la fenêtre, la tabulation y reste
  * (aller-retour), et le focus est rendu au déclencheur à la fermeture.
  *
- *   const { verifierModales } = await import("./src/tests/ecrans.test.js");
+ *   const { verifierModales } = await import("./tests/ecrans.test.js");
  *   await verifierModales();
  */
 export async function verifierModales({ attente = 150 } = {}) {
@@ -427,7 +427,7 @@ function adressesDeFiches() {
  * le plus de grilles de champs. Les blocs repliables sont ouverts avant la
  * mesure — un contenu replié n'est pas rendu, et sa mesure ne vaudrait rien.
  *
- *   const { verifierAlignement } = await import("./src/tests/ecrans.test.js");
+ *   const { verifierAlignement } = await import("./tests/ecrans.test.js");
  *   await verifierAlignement();
  */
 export async function verifierAlignement({ attente = 320 } = {}) {
@@ -502,7 +502,7 @@ export async function verifierAlignement({ attente = 320 } = {}) {
  * où les groupes aient une liste ouverte où se redire —, puis refermé :
  * l'application est rendue dans l'état où elle a été trouvée.
  *
- *   const { verifierRecherche } = await import("./src/tests/ecrans.test.js");
+ *   const { verifierRecherche } = await import("./tests/ecrans.test.js");
  *   await verifierRecherche();
  */
 export async function verifierRecherche({ attente = 90 } = {}) {
@@ -830,7 +830,7 @@ function eprouverReplacement() {
  * Ce second volet ne peut échouer que sur une fenêtre étroite : c'est là qu'il
  * faut le lancer (`set_viewport_size`), comme le contrôle d'alignement.
  *
- *   const { verifierMenus } = await import("./src/tests/ecrans.test.js");
+ *   const { verifierMenus } = await import("./tests/ecrans.test.js");
  *   await verifierMenus();
  */
 export async function verifierMenus({ attente = 120 } = {}) {
@@ -917,7 +917,7 @@ const ECRANS_ENTETE = ["aide", "affaires", "tableau-de-bord/rapport"];
  * un cadre de widget la laisse dans le flux (`styles.css`), et il n'y a rien à
  * mesurer sur une colonne qui ne se colle pas.
  *
- *   const { verifierEntete } = await import("./src/tests/ecrans.test.js");
+ *   const { verifierEntete } = await import("./tests/ecrans.test.js");
  *   await verifierEntete();
  *   await verifierEntete({ embarque: true });
  */
@@ -1302,7 +1302,7 @@ async function eprouverDepot() {
  * Comme les autres contrôles d'affichage, celui-ci se lance à la largeur qu'on
  * veut éprouver (`set_viewport_size`) :
  *
- *   const { verifierRedaction } = await import("./src/tests/ecrans.test.js");
+ *   const { verifierRedaction } = await import("./tests/ecrans.test.js");
  *   await verifierRedaction();
  *
  * Le parcours déplie puis replie les outils de chaque écran, et l'état des
@@ -1453,7 +1453,7 @@ function adressesDuLien(href) {
  * dont nul n'a d'adresse n'a pas de bouton, et est ignorée. Comme partout dans
  * ce module, l'application est rendue dans l'état où elle a été trouvée.
  *
- *   const { verifierContacts } = await import("./src/tests/ecrans.test.js");
+ *   const { verifierContacts } = await import("./tests/ecrans.test.js");
  *   await verifierContacts();
  */
 export async function verifierContacts({ attente = 260 } = {}) {

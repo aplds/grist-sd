@@ -11,7 +11,7 @@ changer le dépôt source**, une variante minifiée et regroupée.
 | Fichier | Rôle | Taille |
 | --- | --- | --- |
 | `app.min.js` | tout le JavaScript de `src/` regroupé en **un** module et minifié | ≈ 1,21 Mo (contre ≈ 2,0 Mo) |
-| `styles.min.css` | `src/styles.css` minifié | ≈ 68 ko (contre ≈ 146 ko) |
+| `styles.min.css` | `styles.css` minifié | ≈ 68 ko (contre ≈ 146 ko) |
 | `index.min.html` | page d'entrée de la variante (dans ce dossier) | — |
 
 Les deux fichiers ne vivent **pas** dans le dépôt : ce sont des artefacts, à
@@ -31,9 +31,9 @@ import { build } from "./build.mjs";
 const { js, css } = await build(); // { js: Uint8Array, css: string }
 ```
 
-Il regroupe `src/app.js` (suivant ses `import` relatifs), minifie le tout,
+Il regroupe `app.js` (suivant ses `import` relatifs), minifie le tout,
 laisse **externes** les modules chargés à la demande depuis esm.sh
-(`pdfmake`, `docx`, `pdf-lib`, `xlsx`), minifie `src/styles.css`, et rend les
+(`pdfmake`, `docx`, `pdf-lib`, `xlsx`), minifie `styles.css`, et rend les
 octets. Reste à les déposer (`upload_file`) et à reporter les deux adresses dans
 `index.min.html`.
 

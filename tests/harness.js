@@ -4,7 +4,7 @@
 // de plus. Il n'y a ni fichier de paquets, ni outil de construction à
 // installer : les cas s'écrivent en JavaScript ordinaire, à côté du code
 // qu'ils vérifient, et se lancent dans un navigateur (voir `index.html`) ou,
-// depuis l'outil, par `import("./src/tests/invariants.test.js")` suivi de
+// depuis l'outil, par `import("./tests/invariants.test.js")` suivi de
 // `lancer()`.
 //
 // Chaque garantie de `SPEC.md` § 8 qui se vérifie sur de la **logique pure**

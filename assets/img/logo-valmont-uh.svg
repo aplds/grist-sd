@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="Université des Hautes-Études de Valmont">
+  <circle cx="80" cy="80" r="76" fill="#000091"/>
+  <circle cx="80" cy="80" r="66" fill="none" stroke="#ffffff" stroke-width="2"/>
+  <path d="M44 108V52h9v56zm0-56 36 56h9L53 52z" fill="#ffffff" opacity="0"/>
+  <text x="80" y="92" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="52" font-weight="700" fill="#ffffff">UH</text>
+  <text x="80" y="124" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="13" fill="#ffffff">VALMONT</text>
+</svg>

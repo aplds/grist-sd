@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="ENSII Valmont">
+  <path d="M80 8 148 44v72L80 152 12 116V44z" fill="#000091"/>
+  <path d="M80 22 134 50v60L80 138 26 110V50z" fill="none" stroke="#ffffff" stroke-width="2"/>
+  <text x="80" y="94" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="50" font-weight="700" fill="#ffffff">EI</text>
+  <text x="80" y="122" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="13" fill="#ffffff">VALMONT</text>
+</svg>

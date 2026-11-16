@@ -17,7 +17,7 @@ dates, les délais, l'échappement ou les exports serait partie en production sa
 
 ## Lancer les tests
 
-**Dans un navigateur** : ouvrez `src/tests/index.html` (servi par le même
+**Dans un navigateur** : ouvrez `tests/index.html` (servi par le même
 hébergement que l'outil, ou en local). La page liste chaque cas, puis le compte
 rendu.
 
@@ -25,15 +25,15 @@ rendu.
 utilise le code réellement chargé :
 
 ```js
-const h = await import("./src/tests/harness.js");
-const m = await import("./src/tests/invariants.test.js");
+const h = await import("./tests/harness.js");
+const m = await import("./tests/invariants.test.js");
 await h.lancer(); // { total, reussis, echecs, duree, resultats }
 ```
 
 Le test de fumée par écran demande l'application vivante :
 
 ```js
-const { fumerEcrans } = await import("./src/tests/ecrans.test.js");
+const { fumerEcrans } = await import("./tests/ecrans.test.js");
 await fumerEcrans(); // parcourt NAV, puis revient à l'écran de départ
 ```
 
@@ -44,7 +44,7 @@ qui portent les grandes grilles ; les outils repliés sont dépliés avant la
 mesure. À lancer aussi après un changement de largeur (`set_viewport_size`) :
 
 ```js
-const { verifierAlignement } = await import("./src/tests/ecrans.test.js");
+const { verifierAlignement } = await import("./tests/ecrans.test.js");
 await verifierAlignement(); // => { total, reussis, echecs, bandes, resultats }
 ```
 
@@ -62,7 +62,7 @@ que sur une section assez fournie, l'onglet s'ouvre sur l'affaire dont la sectio
 compte le plus de membres en fonction ; la sélection trouvée est rendue à la fin :
 
 ```js
-const { verifierRecherche } = await import("./src/tests/ecrans.test.js");
+const { verifierRecherche } = await import("./tests/ecrans.test.js");
 await verifierRecherche(); // => { total, reussis, echecs, resultats }
 ```
 
@@ -75,7 +75,7 @@ est ouvert et son panneau doit rester dans la fenêtre. Ce second volet ne peut
 contrôle d'alignement :
 
 ```js
-const { verifierMenus } = await import("./src/tests/ecrans.test.js");
+const { verifierMenus } = await import("./tests/ecrans.test.js");
 await verifierMenus(); // => { total, reussis, echecs, menus, resultats }
 ```
 
@@ -128,7 +128,7 @@ de widget la laisse dans le flux, et il n'y a rien à mesurer sur une colonne qu
 ne se colle pas.
 
 ```js
-const { verifierEntete } = await import("./src/tests/ecrans.test.js");
+const { verifierEntete } = await import("./tests/ecrans.test.js");
 await verifierEntete(); // => { total, reussis, echecs, embarque, resultats }
 await verifierEntete({ embarque: true }); // le même parcours en cadre Grist
 ```
@@ -162,7 +162,7 @@ largeur d'un outil embarqué dans un document Grist), 1200 px et 1440 px (feuill
 A4 entière).
 
 ```js
-const { verifierRedaction } = await import("./src/tests/ecrans.test.js");
+const { verifierRedaction } = await import("./tests/ecrans.test.js");
 await verifierRedaction(); // => { total, reussis, echecs, depot, resultats }
 ```
 
@@ -181,14 +181,14 @@ les liens entre eux — c'est donc bien le comportement de l'écran qui est
 éprouvé, non la liste des rôles.
 
 ```js
-const { verifierContacts } = await import("./src/tests/ecrans.test.js");
+const { verifierContacts } = await import("./tests/ecrans.test.js");
 await verifierContacts(); // => { total, reussis, echecs, resultats }
 ```
 
 ## Avant chaque livraison
 
 Un seul geste désormais (NC-0025) : **« Vérifier la livraison »** dans l'onglet
-Debug, ou `src/verifier.mjs` en ligne de commande, analyse la syntaxe de **tous**
+Debug, ou `verifier.mjs` en ligne de commande, analyse la syntaxe de **tous**
 les modules (esbuild-wasm, déjà employé par `livraison/build.mjs`) et, sur
 demande, exécute le harnais — puis on recopie le rapport dans `CHANGELOG.md`.
 À la main, les deux gestes restent :

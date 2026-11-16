@@ -78,16 +78,19 @@ const PLAGE_LATIN_EXT = "U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+0
  * centrale et orientale, que les noms des dossiers amènent souvent. Les
  * fichiers sont ceux de `@fontsource/public-sans` (voir src/README.md).
  */
+/** Adresse d un fichier de police du depot (voir README.md pour la source). */
+const urlFonte = (nom) => new URL("./assets/fonts/" + nom, import.meta.url).href;
+
 const FICHIERS_NEUTRE = [
-  [PLAGE_LATIN, 400, "normal", "https://user.uploads.dev/file/17a556dcc4bcd50fa6b01a90e9e10cc9.woff2"],
-  [PLAGE_LATIN, 500, "normal", "https://user.uploads.dev/file/27976575facc81c020a1ce8de082f01a.woff2"],
-  [PLAGE_LATIN, 700, "normal", "https://user.uploads.dev/file/2ee5e696c04c6c2a8d8d514abcc9a327.woff2"],
-  [PLAGE_LATIN, 400, "italic", "https://user.uploads.dev/file/e7b0654bfe2399eb8a12ff83cd9b9fb3.woff2"],
-  [PLAGE_LATIN, 700, "italic", "https://user.uploads.dev/file/7ec0cd5fbf6ac85535afd7000a0dff9b.woff2"],
-  [PLAGE_LATIN_EXT, 400, "normal", "https://user.uploads.dev/file/481cc675a579338af50e475bb4c22b1e.woff2"],
-  [PLAGE_LATIN_EXT, 500, "normal", "https://user.uploads.dev/file/c760b7bad07a3cb0659e80cafb22df21.woff2"],
-  [PLAGE_LATIN_EXT, 700, "normal", "https://user.uploads.dev/file/c6dfb193b955bf6defe6ac2ce13ab9a6.woff2"],
-  [PLAGE_LATIN_EXT, 400, "italic", "https://user.uploads.dev/file/532c02fad14c0c792cfb633f02916dbc.woff2"],
+  [PLAGE_LATIN, 400, "normal", urlFonte("public-sans-latin-400.woff2")],
+  [PLAGE_LATIN, 500, "normal", urlFonte("public-sans-latin-500.woff2")],
+  [PLAGE_LATIN, 700, "normal", urlFonte("public-sans-latin-700.woff2")],
+  [PLAGE_LATIN, 400, "italic", urlFonte("public-sans-latin-400-italic.woff2")],
+  [PLAGE_LATIN, 700, "italic", urlFonte("public-sans-latin-700-italic.woff2")],
+  [PLAGE_LATIN_EXT, 400, "normal", urlFonte("public-sans-latin-ext-400.woff2")],
+  [PLAGE_LATIN_EXT, 500, "normal", urlFonte("public-sans-latin-ext-500.woff2")],
+  [PLAGE_LATIN_EXT, 700, "normal", urlFonte("public-sans-latin-ext-700.woff2")],
+  [PLAGE_LATIN_EXT, 400, "italic", urlFonte("public-sans-latin-ext-400-italic.woff2")],
 ];
 
 /**
