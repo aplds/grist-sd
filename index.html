@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestion des sections disciplinaires</title>
+<meta name="description" content="Outil de gestion et de suivi des sections disciplinaires : affaires, commissions, séances d'examen, décisions et génération des courriers. Interface bâtie sur le Système de design de l'État, avec une charte neutre au choix (sans la marque de l'État ni la police Marianne).">
+<!--
+  Politique de sécurité du contenu (NC-0003).
+
+  Elle restreint ce que la page peut charger à elle-même, au Système de design
+  de l'État (cdn.jsdelivr.net), aux bibliothèques chargées à la demande
+  (esm.sh) et aux images hébergées (https). « unsafe-inline » et « unsafe-eval »
+  restent nécessaires : la page s'assemble par scripts et styles en ligne, et
+  les documents rendus s'écrivent dans un cadre. Le détail, et la variante à
+  poser en en-tête HTTP pour la page hébergée par Perchance, sont dans
+  `SECURITE.md`.
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://esm.sh; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; font-src 'self' data: https://cdn.jsdelivr.net https://user.uploads.dev; connect-src 'self' blob: data: https:; worker-src 'self' blob:; frame-src 'self' blob: data: https:;">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23000091'/><text x='16' y='22' font-size='16' text-anchor='middle' fill='white' font-family='sans-serif'>SD</text></svg>">
+<script>
+  /* Même préparation du thème que dans la page du générateur (index.html) :
+     le DSFR n'installe son gestionnaire de thème que si `data-fr-scheme` ou
+     `data-fr-theme` est déjà présent sur <html>, et il ne lit la clé
+     « scheme » du stockage local qu'à ce moment-là. Le script pose donc ces
+     attributs avant le premier rendu : le choix mémorisé, sinon « system »
+     (le réglage du système d'exploitation). */
+  try {
+    var stored = localStorage.getItem("scheme");
+    var scheme = (stored === "dark" || stored === "light") ? stored : "system";
+    var dark = scheme === "dark" || (scheme === "system"
+      && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.setAttribute("data-fr-scheme", scheme);
+    document.documentElement.setAttribute("data-fr-theme", dark ? "dark" : "light");
+  } catch (e) { /* stockage indisponible */ }
+</script>
+<script>
+  /* Environnement déclaré (NC-0008). Cette copie du générateur est la
+     **vitrine** : elle se déclare « recette », affiche un bandeau et garde
+     l'onglet Debug. Un déploiement réel pour un établissement déclare
+     « production » (ou retire cette ligne) : les données réelles n'y côtoient
+     alors ni les données de démonstration, ni les outils de mise au point.
+     Un document Grist fait exception : la liaison établie est un déploiement
+     réel, et l'outil s'y place en production — quelle que soit cette ligne. */
+  window.ENVIRONNEMENT = "recette";
+</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@gouvfr/dsfr@1.15.3/dist/dsfr/dsfr.min.css" integrity="sha384-huiykpwaFtSi/zS9cFI5LptsYFZVVBqJagK9pImVfMAh1VF7qc15SNsDFgy72ydf" crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@gouvfr/dsfr@1.15.3/dist/utility/icons/icons.min.css" integrity="sha384-eZttJ6GiCRGDB0vSXDFErzpOrPQjG4MIkulDX4nwR7drxWPMBsiZ5aqaF3WB3WHf" crossorigin="anonymous">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<div id="app"></div>
+<noscript>
+  <div class="fr-container fr-my-4w">
+    <div class="fr-alert fr-alert--warning">
+      <p class="fr-alert__title">JavaScript est requis</p>
+      <p>Cette application fonctionne entièrement dans votre navigateur et nécessite JavaScript.</p>
+    </div>
+  </div>
+</noscript>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@gouvfr/dsfr@1.15.3/dist/dsfr/dsfr.module.min.js" integrity="sha384-Cw5CS2Fvr/DGphoVDgLsI2KeLYMzyATr8PRwDeI+zalFEZ0G8Ig7ZLg8CsMUQW5W" crossorigin="anonymous"></script>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

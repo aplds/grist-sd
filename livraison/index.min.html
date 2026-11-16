@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestion des sections disciplinaires</title>
+<meta name="description" content="Outil de gestion et de suivi des sections disciplinaires : affaires, commissions, séances d'examen, décisions et génération des courriers.">
+<!--
+  Page d'entrée de la **variante minifiée et regroupée** (NC-0004).
+
+  Elle charge le JavaScript en un seul module et la feuille en un seul fichier,
+  tous deux construits depuis `src/` par `livraison/build.mjs` et déposés à des
+  adresses stables (voir `livraison/README.md`). Le dépôt source reste la
+  référence : cette page n'est qu'une livraison.
+
+  Pour reconstruire : `build.mjs` (`js`, `css`), puis déposer les deux fichiers
+  et reporter leurs adresses ci-dessous.
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://esm.sh https://user.uploads.dev; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://user.uploads.dev; img-src 'self' data: blob: https:; font-src 'self' data: https://cdn.jsdelivr.net https://user.uploads.dev; connect-src 'self' blob: data: https:; worker-src 'self' blob:; frame-src 'self' blob: data: https:;">
+<script>
+  /* Préparation du thème, comme dans la page du dépôt : le DSFR n'installe son
+     gestionnaire que si `data-fr-scheme` ou `data-fr-theme` est déjà posé. */
+  try {
+    var stored = localStorage.getItem("scheme");
+    var scheme = (stored === "dark" || stored === "light") ? stored : "system";
+    var dark = scheme === "dark" || (scheme === "system"
+      && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.setAttribute("data-fr-scheme", scheme);
+    document.documentElement.setAttribute("data-fr-theme", dark ? "dark" : "light");
+  } catch (e) { /* stockage indisponible */ }
+</script>
+<!-- Déploiement réel : l'environnement est « production » par défaut (NC-0008).
+     Pour une recette, ajouter : <script>window.ENVIRONNEMENT = "recette";</script> -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23000091'/><text x='16' y='22' font-size='16' text-anchor='middle' fill='white' font-family='sans-serif'>SD</text></svg>">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@gouvfr/dsfr@1.15.3/dist/dsfr/dsfr.min.css" integrity="sha384-huiykpwaFtSi/zS9cFI5LptsYFZVVBqJagK9pImVfMAh1VF7qc15SNsDFgy72ydf" crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@gouvfr/dsfr@1.15.3/dist/utility/icons/icons.min.css" integrity="sha384-eZttJ6GiCRGDB0vSXDFErzpOrPQjG4MIkulDX4nwR7drxWPMBsiZ5aqaF3WB3WHf" crossorigin="anonymous">
+<link rel="stylesheet" href="https://user.uploads.dev/file/774a24935245b5af8df2285b89f08f15.css">
+</head>
+<body>
+<div id="app"></div>
+<noscript>
+  <div class="fr-container fr-my-4w">
+    <div class="fr-alert fr-alert--warning">
+      <p class="fr-alert__title">JavaScript est requis</p>
+      <p>Cette application fonctionne entièrement dans votre navigateur et nécessite JavaScript.</p>
+    </div>
+  </div>
+</noscript>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@gouvfr/dsfr@1.15.3/dist/dsfr/dsfr.module.min.js" integrity="sha384-Cw5CS2Fvr/DGphoVDgLsI2KeLYMzyATr8PRwDeI+zalFEZ0G8Ig7ZLg8CsMUQW5W" crossorigin="anonymous"></script>
+<script type="module" src="https://user.uploads.dev/file/9b1e22022925e44fd382fb787aa93107.js"></script>
+</body>
+</html>

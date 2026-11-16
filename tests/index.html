@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tests — Gestion des sections disciplinaires</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem; color: #161616; }
+  h1 { font-size: 1.3rem; }
+  .cas { padding: .35rem .6rem; border-radius: .25rem; margin: .25rem 0; }
+  .ok { background: #b8fec9; }
+  .ko { background: #ffe9e9; color: #a60000; }
+  .resume { margin-top: 1rem; font-weight: 700; }
+  code { background: #eee; padding: 0 .25rem; }
+</style>
+</head>
+<body>
+<h1>Tests de non-régression</h1>
+<p id="etat">Exécution…</p>
+<div id="resultats"></div>
+<p class="resume" id="resume"></p>
+<script type="module">
+  /* Point d'entrée du harnais dans un navigateur. En pratique, les cas
+     s'exécutent aussi depuis l'outil : voir le README de ce dossier. */
+  import { lancer, nombreDeCas } from "./harness.js";
+  import "./invariants.test.js";
+
+  const etat = document.getElementById("etat");
+  const zone = document.getElementById("resultats");
+  const resume = document.getElementById("resume");
+  etat.textContent = `${nombreDeCas()} cas déclarés.`;
+
+  const rapport = await lancer();
+  for (const r of rapport.resultats) {
+    const div = document.createElement("div");
+    div.className = `cas ${r.ok ? "ok" : "ko"}`;
+    div.textContent = `${r.ok ? "✓" : "✗"} ${r.nom}${r.ok ? "" : ` — ${r.erreur}`}`;
+    zone.appendChild(div);
+  }
+  resume.textContent = `${rapport.reussis}/${rapport.total} cas réussis en ${rapport.duree} ms`;
+  resume.style.color = rapport.echecs ? "#a60000" : "#18753c";
+  window.__rapportTests = rapport;
+</script>
+</body>
+</html>

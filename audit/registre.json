@@ -1,0 +1,1062 @@
+{
+  "outil": "Gestion des sections disciplinaires (grist-sd)",
+  "format": 1,
+  "mis_a_jour_le": "2026-09-21",
+  "note": "Registre des non-conformités de l'audit. Lu au début de chaque campagne, mis à jour à la clôture. Les identifiants sont stables et ne sont jamais réutilisés. Voir PROMPT-AUDIT.md § 5 et § 6 pour le schéma, les gravités (majeure / mineure), les priorités (P0 à P3) et les statuts (ouverte, en_cours, corrigee, regressee, acceptee, non_applicable).",
+  "audits": [
+    {
+      "date": "2026-09-21",
+      "rapport": "src/audit/rapports/audit-2026-09-21.md",
+      "majeures_ouvertes": 17,
+      "mineures_ouvertes": 3,
+      "duree_effective_min": 90
+    },
+    {
+      "date": "2026-09-21",
+      "rapport": "src/audit/rapports/audit-2026-09-21-2.md",
+      "majeures_ouvertes": 7,
+      "mineures_ouvertes": 4,
+      "duree_effective_min": 75
+    }
+  ],
+  "constats": [
+    {
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "ouverte",
+          "note": "Constat ouvert par le premier audit."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "corrigee",
+          "note": "Harnais de tests sans dépendance (`src/tests/`) : 22 cas couvrant les invariants purs de SPEC § 8 (dates, formules, échappement, assainissement, environnements, origines Grist, procédure, contenus, modèle), plus un test de fumée par écran (10 écrans). Exécuté dans l'outil : 22/22, 10/10 écrans."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Re-vérifié : harnais exécuté dans la page, 22/22 en 14 ms et 10/10 écrans. Réserve ouverte : rien ne l'exécute automatiquement (NC-0025)."
+        }
+      ],
+      "id": "NC-0001",
+      "titre": "Vingt-deux garanties revendiquées, aucun test",
+      "chapitre": "1 — Systèmes d'information",
+      "section": "1.2 — Qualité et non-régression",
+      "auditeur": "DSI",
+      "gravite": "majeure",
+      "priorite": "P1",
+      "effort": "long",
+      "referentiel": "ISO/CEI 25010 ; référentiel interne (SPEC.md § 8)",
+      "preuve": [
+        "SPEC.md § 8 : « Chacun est couvert par un contrôle de non-régression dans le code »",
+        "Aucun fichier de test dans le dépôt (recherche sur tout l'arbre)",
+        "36 387 lignes de JavaScript, 55 modules"
+      ],
+      "impact": "Aucune évolution ne peut être livrée sans rejouer à la main les vingt-deux garanties ; la première régression passera inaperçue, en production, sur un acte administratif.",
+      "proposition": "Extraire de SPEC.md § 8 un harnais de tests exécutables sans dépendance, un cas par invariant, avec des jeux de données réduits ; y ajouter un test de fumée par écran."
+    },
+    {
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "ouverte",
+          "note": "Constat ouvert par le premier audit."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "corrigee",
+          "note": "Numéro de version `1.0.0` dans `src/version.js`, journal des livraisons `src/CHANGELOG.md`, version affichée dans Réglages › Données › Diagnostic et en tête du journal de diagnostic (`src/diagnostic.js`)."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Re-vérifié : version 1.0.0, CHANGELOG, ligneVersion() en tête du journal de diagnostic."
+        }
+      ],
+      "id": "NC-0002",
+      "titre": "Aucune chaîne de fabrication : ni version, ni linter, ni livraison traçable",
+      "chapitre": "1 — Systèmes d'information",
+      "section": "1.3 — Industrialisation",
+      "auditeur": "DSI",
+      "gravite": "majeure",
+      "priorite": "P1",
+      "effort": "moyen",
+      "referentiel": "ISO/CEI 25010 (maintenabilité) ; bonnes pratiques de livraison",
+      "preuve": [
+        "Absence de package.json, de configuration de linter ou de typage, de CHANGELOG et de fichier de version",
+        "README.md § 1 : la livraison consiste à déposer des fichiers ; export.js fabrique l'archive à la main"
+      ],
+      "impact": "Impossible de savoir quelle version tourne, de revenir en arrière, ou de corréler un incident avec un changement.",
+      "proposition": "Numéroter les livraisons, tenir un CHANGELOG, afficher la version dans Réglages › Données › Diagnostic, exécuter vérification syntaxique et tests avant livraison."
+    },
+    {
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "ouverte",
+          "note": "Constat ouvert par le premier audit."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "corrigee",
+          "note": "`src/dependances.js` (source unique : version du DSFR, adresses des bibliothèques, empreintes), attribut `integrity` sur les fichiers DSFR statiques, politique de sécurité du contenu (balise dans l'`index.html` de l'archive, en-tête HTTP documenté pour la page Perchance), `src/SECURITE.md` (inventaire, hébergement des polices, mode dégradé)."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Re-vérifié : les trois empreintes SHA-384 recomputées sur les fichiers servis sont conformes. Réserves en observation : CSP inapplicable sur la page Perchance, modules à la demande sans intégrité."
+        }
+      ],
+      "id": "NC-0003",
+      "titre": "Dépendances chargées à l'exécution chez des tiers, sans contrôle d'intégrité",
+      "chapitre": "1 — Systèmes d'information",
+      "section": "1.4 — Chaîne d'approvisionnement",
+      "auditeur": "DSI",
+      "gravite": "majeure",
+      "priorite": "P1",
+      "effort": "moyen",
+      "referentiel": "RGS ; OWASP ASVS 14",
+      "preuve": [
+        "index.html : DSFR chargé depuis cdn.jsdelivr.net sans attribut integrity, aucune politique de sécurité du contenu",
+        "import-fichiers.js:42,46 (sql.js 1.11.0, xlsx 0.18.5)",
+        "export-doc.js:137-138 (pdfmake 0.2.20, docx 9.5.1)",
+        "pdf-a.js:113 (pdf-lib 1.17.1)",
+        "pdf-fonts.js:44 : quatre polices Public Sans hébergées sur user.uploads.dev",
+        "export-doc.js:1265 : l'export PDF échoue si la police est introuvable"
+      ],
+      "impact": "Une compromission d'un domaine tiers fait exécuter du code arbitraire dans la page qui traite les dossiers ; une indisponibilité supprime la production de PDF.",
+      "proposition": "Figer chaque bibliothèque par une empreinte d'intégrité ou un hébergement propre, déclarer une politique de sécurité du contenu, héberger les polices avec l'outil, documenter le mode dégradé."
+    },
+    {
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "ouverte",
+          "note": "Constat ouvert par le premier audit."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "corrigee",
+          "note": "`src/livraison/build.mjs` (esbuild-wasm, sans installation) construit `app.min.js` (1 092 253 o contre ≈ 2,0 Mo) et `styles.min.css` (60 385 o contre 120 290 o) ; `src/livraison/index.min.html` les sert. Vérifié : bundle analysé sans erreur, artefacts servis (200, types corrects)."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Re-vérifié : livraison/ présent (build.mjs, index.min.html) ; artefacts hébergés. Observation : le bundle n'est ni le point d'entrée ni protégé par une intégrité."
+        }
+      ],
+      "id": "NC-0004",
+      "titre": "Trois mégaoctets servis en cinquante-cinq fichiers",
+      "chapitre": "1 — Systèmes d'information",
+      "section": "1.5 — Performance et diffusion",
+      "auditeur": "DSI",
+      "gravite": "mineure",
+      "priorite": "P2",
+      "effort": "moyen",
+      "referentiel": "ISO/CEI 25010 (performance)",
+      "preuve": [
+        "Mesure en direct : 100 ressources, 3 178 ko décodés (JS 1 995 ko, CSS 1 171 ko, dont 706 ko de DSFR)",
+        "55 modules chargés individuellement, aucun code minifié ou regroupé"
+      ],
+      "impact": "Postes modestes et réseaux contraints paient chaque visite.",
+      "proposition": "Produire à la livraison une variante minifiée et regroupée, servie compressée, sans changer le dépôt source."
+    },
+    {
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "ouverte",
+          "note": "Constat ouvert par le premier audit."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "corrigee",
+          "note": "Empreinte des contenus (`src/contenus.js`), avis « contenus livrés plus récents » dans Réglages › Données, action « Aligner sur les contenus livrés » (`planAlignementTrames` ajoute les trames manquantes et remet d'aplomb format/auteur/destinataire des trames livrées, sans toucher au texte). Vérifié en direct : base 16/10/42/5 → 22 sanctions, 19 motifs, 44 trames, 6 formats, plan vide."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Re-vérifié : contenusLivres() 22/19/44/6/9, signature 90a80a09, plan vide sur la base alignée. Réserve ouverte : l'alignement écrase sans le montrer (NC-0026)."
+        }
+      ],
+      "id": "NC-0005",
+      "titre": "Le contenu livré ne parvient jamais à une base existante",
+      "chapitre": "1 — Systèmes d'information",
+      "section": "1.6 — Cycle de vie des contenus livrés",
+      "auditeur": "DSI",
+      "gravite": "majeure",
+      "priorite": "P1",
+      "effort": "moyen",
+      "referentiel": "Référentiel interne (README.md § 5, SPEC.md § 1.4) ; bonnes pratiques de migration",
+      "preuve": [
+        "store.js:87 (ensureTramesParDefaut) et app.js:4437 (installerTramesParDefautSiVierge) ne s'appliquent qu'à une base sans aucune trame",
+        "trames-defaut.js livre 44 trames et 6 formats ; la base de démonstration en porte 42 et 5",
+        "regimes.js:337,367 livre 22 sanctions et 18 motifs ; la base en porte 16 et 10"
+      ],
+      "impact": "Une collectivité équipée depuis six mois travaille avec des modèles périmés et rien ne l'en avertit ; une correction juridique apportée à un modèle ne l'atteint jamais.",
+      "proposition": "Versionner les contenus livrés (une empreinte par jeu), signaler à l'administrateur les contenus plus récents, offrir un alignement des trames comparable à celui des catalogues, sans écraser un modèle modifié par l'établissement."
+    },
+    {
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "ouverte",
+          "note": "Constat ouvert par le premier audit."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "corrigee",
+          "note": "Échappement par défaut à la substitution (`render.js` : `asHtml`, listes blanches `COLONNES_HTML` et `VARIABLES_HTML`), assainissement des colonnes riches à l'enregistrement, à l'import et au chargement (`src/sanitize.js`). Cas de test dédiés (rendu, assainissement)."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Re-vérifié : échappement par défaut à la substitution, assainissement des colonnes riches à l'enregistrement, à l'import et au chargement ; cas de test 2/2."
+        }
+      ],
+      "id": "NC-0006",
+      "titre": "Le HTML d'un document recopie les valeurs sans les échapper (XSS stocké)",
+      "chapitre": "2 — Sécurité des systèmes d'information",
+      "section": "2.1 — Injection",
+      "auditeur": "RSSI",
+      "gravite": "majeure",
+      "priorite": "P0",
+      "effort": "court",
+      "referentiel": "OWASP Top 10 A03 ; OWASP ASVS 5.3 ; RGPD art. 32",
+      "preuve": [
+        "render.js:372 (renderTemplate) substitue les balises {{…}} par toStr(value)",
+        "render.js:99 (toStr) retourne String(v) sans échappement",
+        "Document inséré par innerHTML ; épreuve : X<img src=x onerror=\"window.__xss=7\"> dans le nom d'un secrétaire produit window.__xss === 7 dans l'aperçu",
+        "editor.js:1527 (sanitizeHtml) n'est branché que sur le collage (editor.js:1417)"
+      ],
+      "impact": "Une personne qui peut écrire une donnée exécute du code dans la session de toutes celles qui ouvriront la pièce — lecteur, visiteur, président, propriétaire. Les fichiers importés et l'édition directe des tables Grist sont d'autres voies d'entrée.",
+      "proposition": "Échapper par défaut dans renderTemplate et renderVariables, avec une liste blanche des colonnes porteuses de HTML ; appliquer sanitizeHtml à l'import et à l'enregistrement ; poser une politique de sécurité du contenu ; nettoyer les données déjà enregistrées."
+    },
+    {
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "ouverte",
+          "note": "Constat ouvert par le premier audit."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "corrigee",
+          "note": "`neutraliserFormule` / `champCsv` (`src/export-table.js`) appliqués au CSV, au classeur Excel et aux exports de membres (`membres-csv.js`). Cas de test dédiés."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Re-vérifié : neutraliserFormule sur le CSV, le classeur et les exports de membres ; cas de test, nombre négatif intact."
+        }
+      ],
+      "id": "NC-0007",
+      "titre": "Les exports tabulaires laissent passer les formules",
+      "chapitre": "2 — Sécurité des systèmes d'information",
+      "section": "2.2 — Injection dans les fichiers produits",
+      "auditeur": "RSSI",
+      "gravite": "majeure",
+      "priorite": "P0",
+      "effort": "court",
+      "referentiel": "OWASP (CSV Injection)",
+      "preuve": [
+        "export-table.js:182 (champCsv) n'entoure de guillemets que sur ; \" ou retour à la ligne",
+        "Épreuve : DUPONT;=1+1 et \"=HYPERLINK(\"\"http://exemple.test\"\",\"\"clic\"\")\";12 sortent tels quels"
+      ],
+      "impact": "Le fichier est ouvert par des secrétariats ; une formule peut exécuter une commande externe ou exfiltrer des cellules voisines, à partir d'une donnée qui peut venir d'un import.",
+      "proposition": "Préfixer d'une apostrophe toute valeur commençant par =, +, - ou @, dans le CSV et dans le classeur, et couvrir le cas par un test."
+    },
+    {
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "ouverte",
+          "note": "Constat ouvert par le premier audit."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "corrigee",
+          "note": "`src/environnement.js` : production par défaut, recette sur déclaration (`window.ENVIRONNEMENT`), bandeau de recette, onglet Debug et jeu d'exemple réservés à la recette, `appStore`/`appState` non publiés en production. Cas de test."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Re-vérifié pour le site autonome : production par défaut, Debug fermé, appStore non publié, base vide hors recette. Trou ouvert dans l'enveloppe Perchance de l'archive (NC-0021)."
+        }
+      ],
+      "id": "NC-0008",
+      "titre": "La démonstration et la production ne sont pas segmentées",
+      "chapitre": "2 — Sécurité des systèmes d'information",
+      "section": "2.3 — Environnements et données de démonstration",
+      "auditeur": "RSSI",
+      "gravite": "majeure",
+      "priorite": "P0",
+      "effort": "moyen",
+      "referentiel": "RGPD art. 5.1.f et 32 ; doctrine de séparation des environnements ; RGS",
+      "preuve": [
+        "views/debug.js:23 : debugAllowed(state) vaut !state.embedded — l'onglet Debug est ouvert dans le déploiement autonome de production",
+        "views/debug.js:116 : identité simulée ; simulation de rôle ; « Restaurer les exemples », « Tout effacer », « Vider la base locale », « Télécharger le générateur (.zip) »",
+        "store.js:200 : une base vide ou illisible est remplie par le jeu fictif ; store.js:572 (resetToSeed) écrase la base",
+        "Aucun marquage d'environnement à l'écran"
+      ],
+      "impact": "Une base réelle peut être saisie dans un environnement de démonstration, ou l'inverse ; un document produit depuis la recette n'est rattachable à rien ; « Tout effacer » est à un clic d'une base de production.",
+      "proposition": "Déclarer l'environnement au chargement (jamais déduit du cadre), marquer visiblement la recette, fermer en production l'onglet Debug et ses outils de purge, ne poser le jeu d'exemple que si l'environnement le permet."
+    },
+    {
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "ouverte",
+          "note": "Constat ouvert par le premier audit."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "corrigee",
+          "note": "Mode session (rien n'est conservé sur le poste), verrouillage après inactivité, avertissement « poste partagé » — Réglages › Données (`src/reglages.js`, `src/store.js`, `src/app.js`). Vérifié en direct : verrouillage puis déverrouillage."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Re-vérifié : mode session, avertissement « poste partagé », corbeille datée. Réserve ouverte : le verrouillage n'authentifie pas (NC-0022)."
+        }
+      ],
+      "id": "NC-0009",
+      "titre": "Données disciplinaires en clair sur le poste, sans verrouillage ni effacement",
+      "chapitre": "2 — Sécurité des systèmes d'information",
+      "section": "2.4 — Confidentialité au poste de travail",
+      "auditeur": "RSSI",
+      "gravite": "majeure",
+      "priorite": "P1",
+      "effort": "moyen",
+      "referentiel": "RGPD art. 5.1.f et 32 ; loi n° 78-17",
+      "preuve": [
+        "store.js:214 : la base entière est écrite en clair dans localStorage (sections-disciplinaires.db.v1, mesuré à 137 ko pour dix affaires)",
+        "Aucune purge à la fermeture, aucun verrouillage de session",
+        "Les exports JSON, PDF, Word et CSV sont également en clair"
+      ],
+      "impact": "Sur un poste partagé, la totalité des dossiers disciplinaires reste lisible par qui accède à la session ; un changement d'adresse ou de nom fait perdre la base sans avertissement.",
+      "proposition": "Proposer un mode session (base non persistée ou purgée à la fermeture), verrouiller après inactivité, avertir du risque du poste partagé, documenter la conduite à tenir."
+    },
+    {
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "ouverte",
+          "note": "Constat ouvert par le premier audit."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "corrigee",
+          "note": "Dossier `src/rgpd/` (registre des traitements, décision sur l'analyse d'impact, durées de conservation, mentions d'information), suppression journalisée avant exécution, corbeille datée et purgeable selon `corbeille_retention_mois`."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Re-vérifié : dossier rgpd/ (4 pièces), suppressions journalisées avant exécution, purge de la corbeille selon corbeille_retention_mois."
+        }
+      ],
+      "id": "NC-0010",
+      "titre": "Aucun dossier de conformité des données, corbeille non purgée",
+      "chapitre": "2 — Sécurité des systèmes d'information",
+      "section": "2.5 — Conformité des traitements",
+      "auditeur": "RSSI",
+      "gravite": "majeure",
+      "priorite": "P1",
+      "effort": "moyen",
+      "referentiel": "RGPD art. 5, 13, 30, 32 et 35 ; art. 9 et 10",
+      "preuve": [
+        "Aucune pièce : ni registre des traitements, ni analyse d'impact, ni mentions d'information, ni durées de conservation, ni délégué désigné",
+        "Table Corbeille : le contenu entier de la ligne supprimée est conservé en JSON et en clair (store.js:435, mettreALaCorbeille)",
+        "Table Journal : table ordinaire du document, modifiable hors de l'outil"
+      ],
+      "impact": "En cas de contrôle ou de demande d'effacement, l'établissement ne peut ni produire son registre, ni démontrer ses durées, ni garantir l'effacement de la donnée.",
+      "proposition": "Produire le dossier (registre, décision sur l'analyse d'impact, durées par catégorie, mentions d'information) ; dater les entrées de la corbeille et prévoir sa purge ; journaliser les suppressions avant de les exécuter."
+    },
+    {
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "ouverte",
+          "note": "Constat ouvert par le premier audit."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "corrigee",
+          "note": "Origines Grist restreintes (`gristOriginsAutorisees`, `origineGristAutorisee`), repli sur l'adresse par défaut, messages du thème acceptés du seul parent (`event.source === window.parent`). Cas de test."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Re-vérifié : origines déclarées, repli docs.getgrist.com, messages du thème acceptés du seul parent. Régression fonctionnelle ouverte : widget d'une instance auto-hébergée (NC-0023)."
+        }
+      ],
+      "id": "NC-0011",
+      "titre": "L'API Grist est chargée depuis l'origine lue dans Referer",
+      "chapitre": "2 — Sécurité des systèmes d'information",
+      "section": "2.6 — Code tiers et intégrité de la page",
+      "auditeur": "RSSI",
+      "gravite": "majeure",
+      "priorite": "P0",
+      "effort": "court",
+      "referentiel": "OWASP ASVS 14 ; RGS",
+      "preuve": [
+        "grist-backend.js:203 lit new URL(document.referrer).hostname",
+        "grist-backend.js:225 (gristApiCandidates) et :229 retiennent https://<origine du référent>/grist-plugin-api.js avant le repli sur docs.getgrist.com",
+        "Aucun contrôle que cette origine est un serveur Grist"
+      ],
+      "impact": "Si l'outil est encadré par une page hostile, le script servi par cette page s'exécute dans le contexte de l'outil et dialogue avec lui par le canal du widget.",
+      "proposition": "Restreindre les origines acceptées à une liste déclarée, refuser tout référent non reconnu et retomber sur l'adresse par défaut, vérifier l'origine des messages reçus, poser une politique de sécurité du contenu."
+    },
+    {
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "ouverte",
+          "note": "Constat ouvert par le premier audit."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "corrigee",
+          "note": "Titres de section en H2, sous-blocs en H3 (composants `ui`, en-têtes de panneaux, palette de l'éditeur, panneaux imbriqués) ; outline des écrans relevé sans saut de niveau."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Re-vérifié : aucun saut de niveau de titre sur 10 écrans et leurs sous-pages."
+        }
+      ],
+      "id": "NC-0012",
+      "titre": "La hiérarchie des titres saute un niveau sur tous les écrans",
+      "chapitre": "3 — Qualité, accessibilité et interfaces",
+      "section": "3.1 — Structure du document",
+      "auditeur": "Qualiticien",
+      "gravite": "majeure",
+      "priorite": "P1",
+      "effort": "court",
+      "referentiel": "RGAA 4.1 critère 9.1.2 ; WCAG 2.2 SC 1.3.1",
+      "preuve": [
+        "Mesure sur dix écrans : chacun présente un saut de niveau (H1 puis H3, sans H2)",
+        "Exemple, page Aide : H1 « Prendre en main l'outil », puis H3 « Accès directs »"
+      ],
+      "impact": "Un utilisateur de lecteur d'écran navigue par titres ; le niveau intermédiaire manque sur toutes les pages.",
+      "proposition": "Poser les titres de section en H2 (sous-blocs en H3), puis contrôler l'outline des dix écrans."
+    },
+    {
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "ouverte",
+          "note": "Constat ouvert par le premier audit."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "corrigee",
+          "note": "Replis sous 62em et largeurs en `minmax(min(...), 1fr)` / `min-width: 0` (`styles.css`) ; mesure à 320 px sans débordement sur affaires et réglages › sections."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Re-vérifié : 0 px de débordement horizontal sur 10 écrans et 13 sous-écrans à 320 px."
+        }
+      ],
+      "id": "NC-0013",
+      "titre": "Deux écrans sur huit débordent à 320 px",
+      "chapitre": "3 — Qualité, accessibilité et interfaces",
+      "section": "3.2 — Adaptation à la largeur",
+      "auditeur": "Qualiticien",
+      "gravite": "majeure",
+      "priorite": "P1",
+      "effort": "court",
+      "referentiel": "RGAA 4.1 critère 10.11 ; WCAG 2.2 SC 1.4.10",
+      "preuve": [
+        "Mesure à 320 px : #affaires déborde de 48 px (contenu 368 px), #reglages/sections de 36 px (356 px)",
+        "Six autres écrans mesurés sans débordement"
+      ],
+      "impact": "Même gêne au zoom fort (400 % sur un écran de bureau) qu'au téléphone.",
+      "proposition": "Identifier le bloc fautif (barre de filtres, onglets ou tableau) et le laisser se replier sous 48em, comme le reste de l'outil."
+    },
+    {
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "ouverte",
+          "note": "Constat ouvert par le premier audit."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "corrigee",
+          "note": "Déclaration d'accessibilité, schéma pluriannuel et plan d'action (`src/accessibilite/`), page `#accessibilite` publiée dans l'outil et liée depuis la page Aide et le pied de page. Test de fumée : écran rendu."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Re-vérifié : déclaration, schéma pluriannuel et plan d'action publiés, page #accessibilite liée depuis l'Aide et le pied de page. Observation : renvois vers des fichiers absents de l'archive de déploiement."
+        }
+      ],
+      "id": "NC-0014",
+      "titre": "Aucune des trois pièces légales d'accessibilité n'existe",
+      "chapitre": "3 — Qualité, accessibilité et interfaces",
+      "section": "3.3 — Obligations propres au service public",
+      "auditeur": "Qualiticien",
+      "gravite": "majeure",
+      "priorite": "P1",
+      "effort": "court",
+      "referentiel": "Article 47 de la loi n° 2005-102 ; décret n° 2019-768 ; RGAA 4.1",
+      "preuve": [
+        "README.md § 6 décrit des choix techniques mais ne mentionne ni déclaration d'accessibilité, ni schéma pluriannuel, ni plan d'action",
+        "Aucun lien ni point de contact vers une déclaration dans l'application"
+      ],
+      "impact": "Non-conformité à l'obligation d'accessibilité indépendamment de la qualité du code ; l'usager ne peut ni connaître le niveau, ni signaler un défaut, ni obtenir le contenu autrement.",
+      "proposition": "Rédiger et publier les trois documents, déclarer sans les minimiser les non-conformités relevées ici, publier le point de contact et la voie de recours, et lier la déclaration depuis la page Aide."
+    },
+    {
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "ouverte",
+          "note": "Constat ouvert par le premier audit."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "corrigee",
+          "note": "Comptages produits par le code (`src/contenus.js`, `contenusLivres`, affichés dans Réglages › Données), motif « Usage frauduleux d'un logiciel de triche » rétabli (`regimes.js` → 19 motifs), documentation corrigée (SPEC § 1.4 : « L.121-1 à L.121-11 »). Cas de test."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Re-vérifié : comptages produits par le code (22/19/44/6/9), documentation conforme, motif rétabli."
+        }
+      ],
+      "id": "NC-0015",
+      "titre": "La documentation compte des contenus que le code ne livre pas",
+      "chapitre": "3 — Qualité, accessibilité et interfaces",
+      "section": "3.4 — Exactitude de la documentation",
+      "auditeur": "Qualiticien",
+      "gravite": "mineure",
+      "priorite": "P2",
+      "effort": "court",
+      "referentiel": "Référentiel interne ; ISO/CEI 25010 (exactitude)",
+      "preuve": [
+        "README.md § 5 et SPEC.md § 1.4 annoncent 22 sanctions et 19 motifs ; regimes.js:367 n'en livre que 18 — « Usage frauduleux d'un logiciel de triche » manque (présent dans seed.js)",
+        "42 trames et 5 formats dans la base de démonstration contre 44 et 6 livrés par trames-defaut.js",
+        "SPEC.md § 1.4 cite L.121-1 à L.121-7 du CGFP là où le code cite L.121-1 à L.121-11"
+      ],
+      "impact": "L'établissement croit disposer d'un motif qu'il devra saisir lui-même ; une documentation qui compte faux n'est plus une source de confiance pour la reprise.",
+      "proposition": "Faire produire les comptages par le code, corriger la documentation, rétablir le motif manquant ou l'assumer explicitement."
+    },
+    {
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "ouverte",
+          "note": "Constat ouvert par le premier audit."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "corrigee",
+          "note": "Référentiel d'exigences, matrice exigence → écran → état, et procès-verbal de recette dans `src/EXIGENCES.md`. L'acceptation par le commanditaire reste à faire (acte du commanditaire)."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Re-vérifié : EXIGENCES.md porte la matrice et le procès-verbal. L'acceptation reste un acte du commanditaire."
+        }
+      ],
+      "id": "NC-0016",
+      "titre": "Aucun référentiel d'exigences, aucune recette",
+      "chapitre": "3 — Qualité, accessibilité et interfaces",
+      "section": "3.5 — Complétude et recette",
+      "auditeur": "Qualiticien",
+      "gravite": "majeure",
+      "priorite": "P1",
+      "effort": "moyen",
+      "referentiel": "Référentiel interne ; ISO/CEI 25010 (complétude fonctionnelle)",
+      "preuve": [
+        "Aucun cahier des charges, aucune matrice de couverture, aucun procès-verbal de recette dans le dépôt",
+        "Le seul référentiel est celui de l'auteur : SPEC.md, page Aide, trames livrées, procedure.js"
+      ],
+      "impact": "Les désaccords sur « ce qui était demandé » ne peuvent pas être tranchés ; l'outil ne peut être déclaré ni complet ni incomplet.",
+      "proposition": "Écrire le référentiel d'exigences depuis la documentation existante, le faire accepter par le commanditaire et le tenir en matrice exigence → écran → état."
+    },
+    {
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "ouverte",
+          "note": "Constat ouvert par le premier audit."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "ouverte",
+          "note": "Re-vérifié : Parametres ne porte aucune durée de vie du dossier, aucune colonne d'état d'archivage ; cinq lignes du tableau de durées restent « à inscrire »."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Remédiation : `Parametres` porte `conservation_annees` (10 ans par défaut) et `sort_final` (Versement / Élimination) ; colonne `Affaires.Etat_archivage` ; module `conservation.js` (échéance depuis le délibéré de la décision définitive, à défaut sa notification ou la saisine, avec report du 29 février) ; panneau « Conservation, archivage et régularité » sur la fiche, avec l'alerte d'échéance atteinte ; état des pièces pour versement en CSV (`export-versement`, décompte des pièces à conserver) ; `exportPdf` remonte désormais `pdfA: false` quand la conversion PDF/A échoue. Cas de test (durée réglée, départ, 29 février, sort final, état des pièces)."
+        }
+      ],
+      "id": "NC-0017",
+      "titre": "Ni durée de conservation, ni archivage, ni sort final",
+      "chapitre": "4 — Conformité juridique et valeur des actes",
+      "section": "4.1 — Conservation et archivage",
+      "auditeur": "DAJ",
+      "gravite": "majeure",
+      "priorite": "P1",
+      "effort": "moyen",
+      "referentiel": "Code du patrimoine L.211-1 et s. ; NF Z42-013 ; RGPD art. 5.1.e et 17 ; PDF/A-2b",
+      "preuve": [
+        "La table Parametres ne porte aucune durée de conservation, aucune règle de sort final, aucun état d'archivage",
+        "La conversion au format d'archivage existe (pdf-a.js → PDF/A-2b, vérifié : pdfaid:part 2, conformance B) mais est au mieux effort : en cas d'échec, export-doc.js poursuit avec le PDF ordinaire"
+      ],
+      "impact": "La collectivité ne peut ni démontrer une durée de conservation, ni justifier un effacement, ni produire un dossier d'archive cohérent.",
+      "proposition": "Inscrire une durée de conservation par nature de dossier, l'afficher sur la fiche d'affaire, marquer les pièces à conserver, produire un état des pièces pour versement, et rendre visible l'échec de la conversion PDF/A."
+    },
+    {
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "ouverte",
+          "note": "Constat ouvert par le premier audit."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "ouverte",
+          "note": "Re-vérifié : aucune table ni colonne d'attestation de régularité, aucune trace de lecture conservée."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Remédiation : colonnes `Affaires.Regularite_revue_le` et `Regularite_revue_par`, colonne calculée `Regularite_mention` ; action « Attester la revue de régularité » (date du jour, nom du lecteur, entrée au Journal), sans blocage de la décision ; la mention est insérable dans un acte par la balise `{{Affaire}}.Regularite_mention` ; le panneau dit « revue attestée » ou « non attestée », jamais plus qu'il n'en sait."
+        }
+      ],
+      "id": "NC-0018",
+      "titre": "La régularité est signalée, jamais attestée",
+      "chapitre": "4 — Conformité juridique et valeur des actes",
+      "section": "4.2 — Sécurité juridique de la procédure",
+      "auditeur": "DAJ",
+      "gravite": "majeure",
+      "priorite": "P1",
+      "effort": "moyen",
+      "referentiel": "Code de l'éducation (R.811-11 et s., R.712-9 et s.) ; principe du contradictoire",
+      "preuve": [
+        "SPEC.md § 2 et regimes.js : les contrôles de régularité sont « tous indicatifs : ils signalent, ils ne bloquent jamais »",
+        "Aucune trace de leur lecture n'est conservée, aucun acte ne porte la mention qu'ils ont été vérifiés"
+      ],
+      "impact": "En contentieux, l'établissement ne peut pas démontrer qu'il a vérifié ce que l'outil l'invitait à vérifier ; la sécurité juridique repose sur la vigilance individuelle.",
+      "proposition": "Ajouter une revue de régularité attestée avant la production des actes qui engagent (case à cocher, nom du lecteur, entrée au Journal, mention dans la fiche et sur la pièce), sans bloquer la décision."
+    },
+    {
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "ouverte",
+          "note": "Constat ouvert par le premier audit."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "ouverte",
+          "note": "Re-vérifié : considerants.js:281 inchangé, aucune vérification outillée des références."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Remédiation : la source non identifiable « CNESERAAV, 11 juill. 2025, M. XXX c. VetAgroSup » (`considerants.js:281`) est remplacée par « CE, 17 février 1995, Hardouin et Marie » ; `referencesDuRepertoire()` réunit les sources citées avec leurs considérants, signale celles qui ne sont pas retrouvables (`M. X`, initiales, « anonyme ») et les considérants marqués `aVerifier` (l'affirmation sur la qualité juridique des sections au 1er janvier 2026) ; page Réglages › Catalogues › Références ; seuil `references_verifiees_le` et action « Enregistrer la vérification du jour » (Journal) pour dater la revue du service juridique. Cas de test."
+        }
+      ],
+      "id": "NC-0019",
+      "titre": "Des références juridiques que rien ne permet de vérifier",
+      "chapitre": "4 — Conformité juridique et valeur des actes",
+      "section": "4.3 — Sources et répertoire de considérants",
+      "auditeur": "DAJ",
+      "gravite": "mineure",
+      "priorite": "P2",
+      "effort": "court",
+      "referentiel": "Qualité du droit produit ; exigence de source vérifiable",
+      "preuve": [
+        "considerants.js:281 : « CNESERAAV, 11 juill. 2025, M. XXX c. VetAgroSup » — référence non identifiable en l'état",
+        "Aucun contrôle automatique que les articles cités par les catalogues et les trames existent et sont en vigueur"
+      ],
+      "impact": "Risque de citer une décision inexistante ou mal résumée dans un acte qui part à un usager.",
+      "proposition": "Faire vérifier l'ensemble des références par le service juridique, remplacer les libellés non identifiants par une référence retrouvable, dater la dernière vérification."
+    },
+    {
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21",
+          "statut": "ouverte",
+          "note": "Constat ouvert par le premier audit."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "ouverte",
+          "note": "Re-vérifié : aucune colonne de numéro d'acte sur Decisions ni sur Generateur."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Remédiation : colonne `Decisions.Numero_acte` ; module `actes.js` (séquence par section et par année, rang = plus grand numéro utilisé + 1, jamais rejoué après suppression) ; action « Numéroter les actes » sur la page Décisions (chaque attribution inscrite au Journal) ; registre chronologique consultable (nombre d'actes, premier et dernier, actes sans numéro) et exportable en CSV ; le numéro s'affiche sur la décision et sur la fiche de l'affaire. Cas de test."
+        }
+      ],
+      "id": "NC-0020",
+      "titre": "Aucun registre des actes rendus",
+      "chapitre": "4 — Conformité juridique et valeur des actes",
+      "section": "4.4 — Enregistrement des actes",
+      "auditeur": "DAJ",
+      "gravite": "majeure",
+      "priorite": "P1",
+      "effort": "moyen",
+      "referentiel": "Obligations d'enregistrement et de numérotation des actes administratifs ; qualité de la preuve",
+      "preuve": [
+        "Seule l'affaire porte un numéro (Affaires.Numero)",
+        "Les tables Decisions et Generateur n'ont aucune colonne de numéro ni de registre — vérifié sur une ligne réelle de chaque table"
+      ],
+      "impact": "Une décision disciplinaire ne peut être citée que par sa date et son affaire ; impossible de vérifier qu'une série est complète, ni d'opposer un acte qui s'identifie.",
+      "proposition": "Ajouter une numérotation des actes (séquence par section et par année), un registre chronologique consultable et exportable, et la mention du numéro dans la feuille de style des décisions et dans le Journal."
+    },
+    {
+      "id": "NC-0021",
+      "titre": "L'enveloppe Perchance de l'archive déclare la recette",
+      "chapitre": "2 — Sécurité des systèmes d'information",
+      "section": "2.3 — Environnements et données de démonstration",
+      "auditeur": "RSSI",
+      "gravite": "majeure",
+      "priorite": "P1",
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "referentiel": "RGPD art. 5.1.f et 32 ; doctrine de séparation des environnements ; RGS ; référentiel interne (correction de NC-0008)",
+      "preuve": [
+        "export.js:345 force la production sur l'entrée index.html",
+        "export.js:356-361 : const wrapper = perchanceWrapper(entryHtml) puis écriture de perchance/index.html — l'original n'est jamais passé à forcerProduction",
+        "Vérifié en direct sur l'archive assemblée (87 fichiers, 2 536 183 o) : index.html porte « window.ENVIRONNEMENT = \"production\" », perchance/index.html porte « window.ENVIRONNEMENT = \"recette\" »",
+        "views/debug.js:33 : en recette, l'onglet Debug, la simulation d'identité et de rôle et les purges sont ouverts",
+        "store.js:287 : en recette, une base vide ou illisible est remplie du jeu de démonstration"
+      ],
+      "impact": "Un générateur créé par cette voie s'ouvre en recette : outils de purge et de simulation accessibles sur une base réelle, et remplissage d'une base vide par le jeu fictif — mêlant données de démonstration et données réelles.",
+      "proposition": "Appliquer forcerProduction à l'enveloppe avant écriture ; bannir toute déclaration de recette de tout artefact exporté ; test de non-régression du contenu de l'archive ; le rappeler dans LISEZ-MOI.txt.",
+      "effort": "court",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "ouverte",
+          "note": "Constat ouvert par la seconde campagne : trou laissé par la correction de NC-0008."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Remédiation : l'enveloppe Perchance est passée à `forcerProduction` avant écriture, et une boucle finale re-force la production sur tous les `.html` de l'archive ; paragraphe « Environnement » dans `LISEZ-MOI.txt`."
+        }
+      ]
+    },
+    {
+      "id": "NC-0022",
+      "titre": "Le verrouillage d'écran ne verrouille rien",
+      "chapitre": "2 — Sécurité des systèmes d'information",
+      "section": "2.4 — Confidentialité au poste de travail",
+      "auditeur": "RSSI",
+      "gravite": "mineure",
+      "priorite": "P2",
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "referentiel": "RGPD art. 5.1.f et 32 ; ISO 9241 ; référentiel interne (correction de NC-0009)",
+      "preuve": [
+        "app.js:4345-4375 (verrouiller) : couche div#appLock, un seul bouton « Reprendre la session »",
+        "app.js:4378-4382 (deverrouiller) : masque la couche sans aucune authentification ; la touche Entrée ou Espace produit le même effet (app.js:4368-4370)",
+        "views/reglages.js:1871-1888 : le réglage est présenté comme la parade au poste partagé"
+      ],
+      "impact": "Sur un poste partagé, un clic suffit à rouvrir tous les dossiers disciplinaires : le contrôle donne une fausse assurance et peut fonder une conduite de travail qui n'a aucune protection réelle.",
+      "proposition": "Soit un vrai verrou (code défini par l'utilisateur, stocké en empreinte, déverrouillage journalisé), soit un libellé honnête affirmant que l'écran se couvre sans bloquer l'accès, et le retrait de la promesse dans le panneau de confidentialité et le dossier de conformité.",
+      "effort": "moyen",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "ouverte",
+          "note": "Constat ouvert par la seconde campagne : le verrou ajouté pour NC-0009 ne contrôle pas l'accès."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Remédiation : le verrou est un vrai contrôle d'accès — code défini par l'utilisateur, empreinte SHA-256 conservée sur le poste, déverrouillage journalisé, cinq tentatives avant temporisation ; à défaut de code défini, l'écran et le panneau de confidentialité disent honnêtement qu'il se couvre sans bloquer l'accès."
+        }
+      ]
+    },
+    {
+      "id": "NC-0023",
+      "titre": "Le widget d'une instance Grist auto-hébergée ne se connecte plus, et la documentation l'annonce comme sans réglage",
+      "chapitre": "1 — Systèmes d'information",
+      "section": "1.7 — Déploiement et exactitude de la documentation",
+      "auditeur": "DSI",
+      "gravite": "majeure",
+      "priorite": "P1",
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "referentiel": "Référentiel interne (README.md) ; ISO/CEI 25010 (exactitude fonctionnelle) ; RGS (portabilité)",
+      "preuve": [
+        "README.md:211-213 : « une instance auto-hébergée fonctionne donc sans réglage »",
+        "grist-backend.js:203-231 : l'origine du Referer n'est retenue que si elle appartient à gristOriginsAutorisees() (docs.getgrist.com, getgrist.com, ou une origine déclarée par window.GRIST_ALLOWED_ORIGINS ou une balise <meta name=\"grist-origins\">)",
+        "grist-backend.js:276-281 : à défaut, seul GRIST_API_DEFAULT (docs.getgrist.com) est proposé",
+        "README.md:601 : « ?grist=1 » proposé comme remède au Referer masqué, alors que ce paramètre ne fait que rendre likelyGrist() vrai (grist-backend.js:249) et n'autorise aucune origine",
+        "La variable et la balise ne sont documentées que dans le commentaire de grist-backend.js et le CHANGELOG, ni dans README.md ni dans SECURITE.md"
+      ],
+      "impact": "Sur une instance Grist auto-hébergée, le widget reste sur son écran d'attente : l'API n'est jamais chargée depuis le bon serveur. Un mode de déploiement annoncé est rompu, et la documentation affirme l'inverse.",
+      "proposition": "Documenter la déclaration d'origine (variable et balise, exemple exact) dans README.md et SECURITE.md ; rendre ?grist=1 opérant ou exposer le réglage dans Réglages › Données ; ligne « origine du parent / origines autorisées » au diagnostic ; cas de test de l'auto-hébergement déclaré.",
+      "effort": "moyen",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "ouverte",
+          "note": "Constat ouvert par la seconde campagne : régression fonctionnelle de la correction de NC-0011, non couverte par la première campagne."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Remédiation : `grist.numerique.gouv.fr` (instance souveraine de l'État) est reconnue sans réglage, aux côtés de `docs.getgrist.com` et `getgrist.com` ; une instance auto-hébergée se déclare dans Réglages › Données (conservée sur le poste, `gristOriginesPanel`) ; ligne « origines autorisées / page appelante » au diagnostic ; README et SECURITE documentent la déclaration (variable, balise) et `?grist=1` pour ce qu'il fait ; cas de test de l'instance souveraine et des origines déclarées."
+        }
+      ]
+    },
+    {
+      "id": "NC-0024",
+      "titre": "L'échec d'écriture dans le navigateur est silencieux",
+      "chapitre": "1 — Systèmes d'information",
+      "section": "1.8 — Exploitation et intégrité des données",
+      "auditeur": "DSI",
+      "gravite": "majeure",
+      "priorite": "P1",
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "referentiel": "RGPD art. 5.1.f et 32 ; ISO/CEI 25010 (fiabilité) ; référentiel interne (SPEC.md § 8.2)",
+      "preuve": [
+        "store.js:290-304 (persist) : try { localStorage.setItem(...) } catch (err) { console.warn(...) } — aucune remontée à l'interface, aucune entrée au Journal",
+        "editor.js:1021-1023 : imageHtml accepte les adresses data:image/, donc l'incorporation d'images dans la base",
+        "Mesure en direct : base de démonstration 150 ko, dont Trames 71,8 ko, Intervenants 11,6 ko, Membres 8,2 ko, Affaires 6,7 ko — environ 0,67 ko par affaire, hors images",
+        "Aucune mesure d'occupation ni alerte de seuil (recherche sur tout l'arbre : pas de QuotaExceededError, pas d'estimation d'espace)"
+      ],
+      "impact": "Passé le plafond du stockage local, une séance de saisie est perdue à la fermeture de l'onglet, sans avertissement ni trace ; le secrétariat croit avoir enregistré. La file d'écritures retenues de la SPEC ne couvre que le document Grist.",
+      "proposition": "Porter l'échec à l'interface (bandeau persistant avec la cause, entrée au Journal, ligne au journal de diagnostic) ; mesurer l'occupation et avertir à des seuils (60 %, 85 %) en proposant l'export ; proposer le mode session ou la liaison Grist ; test du chemin d'échec simulé.",
+      "effort": "moyen",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "ouverte",
+          "note": "Constat ouvert par la seconde campagne."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Remédiation : l'échec d'écriture est porté à l'interface (bandeau persistant avec la cause, entrée au Journal, ligne au journal de diagnostic) ; l'occupation du stockage est mesurée et signalée aux seuils de 60 % et 85 %, avec proposition d'export ; cas de test du chemin d'échec simulé (écriture refusée)."
+        }
+      ]
+    },
+    {
+      "id": "NC-0025",
+      "titre": "Le harnais de tests ne s'exécute qu'à la main",
+      "chapitre": "1 — Systèmes d'information",
+      "section": "1.3 — Industrialisation et MCO",
+      "auditeur": "DSI",
+      "gravite": "mineure",
+      "priorite": "P2",
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "referentiel": "ISO/CEI 25010 (maintenabilité) ; référentiel interne (tests/README.md, CHANGELOG.md)",
+      "preuve": [
+        "tests/README.md:40 « Avant chaque livraison » : deux gestes manuels — vérifier la syntaxe, lancer les tests",
+        "Aucun package.json, aucune configuration d'intégration ni de lint dans le dépôt (recherche sur tout l'arbre)",
+        "CHANGELOG.md renvoie aux deux gestes sans enregistrer leur résultat"
+      ],
+      "impact": "Une évolution peut partir sans que le harnais ait tourné : les 22 garanties de SPEC.md § 8 restent défendues par la seule discipline de l'auteur.",
+      "proposition": "Un script unique (analyse syntaxique de tous les modules + harnais dans un navigateur sans écran, esbuild-wasm déjà employé par livraison/build.mjs) ; résultat consigné dans CHANGELOG.md à chaque livraison ; à défaut, liste de contrôle signée en tête de chaque entrée du journal des livraisons.",
+      "effort": "moyen",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "ouverte",
+          "note": "Constat ouvert par la seconde campagne : réserve laissée par la correction de NC-0001."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Remédiation : `src/verifier.mjs` analyse la syntaxe de tous les modules (esbuild-wasm, déjà employé par `livraison/build.mjs`) et peut exécuter le harnais en un seul appel ; panneau « Vérification de la livraison » dans l'onglet Debug (`debug-verifier`) ; le résultat est consigné dans `CHANGELOG.md` à chaque livraison."
+        }
+      ]
+    },
+    {
+      "id": "NC-0026",
+      "titre": "L'alignement des contenus écrase, sans le montrer, les personnalisations de l'établissement",
+      "chapitre": "3 — Qualité, accessibilité et interfaces",
+      "section": "3.6 — Prévisibilité des actions",
+      "auditeur": "Qualiticien",
+      "gravite": "mineure",
+      "priorite": "P2",
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "referentiel": "Référentiel interne (contenus.js) ; ISO 9241 (contrôle par l'utilisateur)",
+      "preuve": [
+        "app.js:2229-2233 : la confirmation ne donne que des comptes (ajouts, corrections), jamais la liste des lignes ni des champs touchés",
+        "regimes.js:420-455 : CHAMPS_ALIGNES réécrit Libelle, Groupe, Public, Tutelle, Duree_max_mois, Sursis_possible, Texte_de_reference des entrées livrées",
+        "trames-defaut.js:1171-1203 : planAlignementTrames remet d'aplomb Type, Auteur et Destinataire des trames livrées",
+        "views/reglages.js:1907-1930 : l'interface affiche le même compte sans détail ; app.js:2242-2245 : le Journal n'enregistre que le total"
+      ],
+      "impact": "Une adaptation locale — durée d'une sanction, texte de référence d'un motif, auteur d'une trame — est effacée sur un clic, sans que l'auteur voie ce qu'il perd ni puisse le reconstituer.",
+      "proposition": "Montrer le détail avant d'appliquer (lignes, champ, valeur actuelle → valeur livrée) ; marquer les entrées modifiées par l'établissement et les exclure par défaut ; inscrire au Journal les modifications ligne par ligne ; reformuler l'avis.",
+      "effort": "moyen",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "ouverte",
+          "note": "Constat ouvert par la seconde campagne : réserve laissée par la correction de NC-0005."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Remédiation : le détail des lignes et des champs touchés est affiché avant l'action (`detailAlignement`) ; deux gestes distincts — « Ajouter les éléments manquants » et « Ajouter et corriger » ; le Journal enregistre ligne à ligne ; la signature des contenus n'est marquée à jour que si tout a été appliqué."
+        }
+      ]
+    },
+    {
+      "id": "NC-0027",
+      "titre": "Les fenêtres modales ne confinent pas le focus",
+      "chapitre": "3 — Qualité, accessibilité et interfaces",
+      "section": "3.1 — Navigation et structure",
+      "auditeur": "Qualiticien",
+      "gravite": "majeure",
+      "priorite": "P1",
+      "statut": "corrigee",
+      "detecte_le": "2026-09-21",
+      "referentiel": "RGAA 4.1 (12.8, 7.1) ; WCAG 2.2 SC 2.4.3 ; motif ARIA APG « modal dialog »",
+      "preuve": [
+        "Mesure en direct sur la fenêtre « Nouvelle affaire » : role=\"dialog\" et aria-modal=\"true\", 17 éléments focusables dans la fenêtre, 57 en dehors, aucun élément [inert]",
+        "ui.js:713-726 : la fenêtre porte role=\"dialog\" aria-modal=\"true\" mais l'arrière-plan reste dans le flux",
+        "app.js:839-848 (focusModal) : focus posé à l'ouverture seulement ; ni piège de tabulation, ni restitution du focus au déclencheur"
+      ],
+      "impact": "Au clavier et au lecteur d'écran, le parcours essentiel de création perd le fil : la tabulation sort de la fenêtre et parcourt un arrière-plan qu'aria-modal déclare pourtant inactif.",
+      "proposition": "Confiner le focus dans .app-dialog (boucle aller-retour), poser inert sur l'arrière-plan pendant l'ouverture et le retirer à la fermeture, restituer le focus au déclencheur ; vérifier les quatre fenêtres et couvrir par un cas de test.",
+      "effort": "court",
+      "historique": [
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "ouverte",
+          "note": "Constat ouvert par la seconde campagne : non relevé par la première, qui avait vérifié le titre et les rôles sans éprouver la tabulation."
+        },
+        {
+          "date": "2026-09-21",
+          "audit": "2026-09-21-2",
+          "statut": "corrigee",
+          "note": "Remédiation : piège de focus (Tab) dans les fenêtres modales, fond neutralisé (`inert`) hors de la fenêtre, focus porté dans la fenêtre à chaque rendu, retour du focus au déclencheur à la fermeture ; test de fumée de la modale (fond neutralisé, boucle du focus, retour)."
+        }
+      ]
+    }
+  ]
+}

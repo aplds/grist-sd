@@ -1,0 +1,5227 @@
+/* Compléments au DSFR propres à l'application.
+   Organisation : coquille, navigation, en-têtes de page, indicateurs,
+   disposition maître/détail, listes, onglets, formulaires, tableaux,
+   cheminement, aperçus de documents, fenêtre modale, impressions. */
+
+/* --------------------------------------------------------------------------
+   Rétablissement des couleurs des composants DSFR.
+
+   La plateforme Perchance injecte un reset (normalize) contenant :
+     button:not([disabled]), input:not([disabled]), select:not([disabled]),
+     textarea:not([disabled]), optgroup:not([disabled]) { color: inherit; }
+   La spécificité de ce sélecteur — (0,1,1), car `:not([disabled])` compte
+   comme un attribut — est supérieure à celle des composants DSFR (0,1,0).
+   Résultat : le libellé des boutons repassait en gris foncé sur le bleu
+   France, et les champs perdaient leur couleur de libellé.
+
+   On rétablit donc les couleurs voulues par le DSFR avec une spécificité au
+   moins égale, déclarée après le reset. Sans effet négatif hors Perchance.
+   -------------------------------------------------------------------------- */
+
+button.fr-btn,
+a.fr-btn {
+  color: var(--text-inverted-blue-france);
+}
+
+button.fr-btn--secondary,
+a.fr-btn--secondary,
+button.fr-btn--tertiary,
+a.fr-btn--tertiary,
+button.fr-btn--tertiary-no-outline,
+a.fr-btn--tertiary-no-outline,
+.fr-btn--account,
+.fr-btn--briefcase,
+.fr-btn--close,
+.fr-btn--display,
+.fr-btn--fullscreen,
+.fr-btn--sort,
+.fr-btn--team {
+  color: var(--text-action-high-blue-france);
+}
+
+button.fr-btn:disabled,
+a.fr-btn:not([href]) {
+  color: var(--text-disabled-grey);
+}
+
+input.fr-input,
+textarea.fr-input,
+select.fr-select {
+  color: var(--text-label-grey);
+}
+
+/* Même origine : le reset impose `input[type="search"] { box-sizing:
+   content-box }` (0,1,1), qui l'emporte sur `.fr-input` (0,1,0). Les champs
+   de recherche débordaient donc de la largeur de leur conteneur, du montant
+   de leur rembourrage horizontal (2rem). */
+input[type="search"].fr-input {
+  box-sizing: border-box;
+}
+
+/* Même famille de défaut : le navigateur enveloppe le contenu des <details>
+   dans une pseudo-boîte `::details-content` dont le `box-sizing` vaut
+   `content-box`. Comme la page fait hériter `box-sizing` (règle
+   `*, ::before, ::after { box-sizing: inherit }`), tout le contenu des
+   panneaux repliables héritait de `content-box` : les champs de formulaire et
+   les colonnes en pourcentage débordaient alors de leur conteneur, et les
+   grilles des panneaux se décalaient. On aligne cette pseudo-boîte sur le
+   reste de la page. Les navigateurs qui ne connaissent pas `::details-content`
+   héritent déjà de `border-box` : la règle y est simplement ignorée. */
+details::details-content {
+  box-sizing: border-box;
+}
+
+/* Le <summary>, lui, échappe à cette boîte : le navigateur le distribue dans
+   l'ombre interne du <details>, où il hérite le `content-box` de son hôte — ni
+   la règle ci-dessus ni le <details> lui-même ne le rattrapent. Les boutons
+   posés dans une en-tête repliable (« Modifier » du dossier de pièces) y
+   prenaient donc la hauteur de leur rembourrage **en plus** de leur hauteur :
+   40 px contre 33 px pour les mêmes boutons dans les autres blocs. Le summary
+   est remis en `border-box` ; la règle `*` fait le reste de son sous-arbre. */
+details > summary {
+  box-sizing: border-box;
+}
+
+input.fr-input::placeholder,
+textarea.fr-input::placeholder {
+  color: var(--text-mention-grey);
+  opacity: 1;
+}
+
+:root {
+  --app-radius: 0.5rem;
+  --app-shadow: 0 1px 3px rgba(0, 0, 18, 0.08);
+  --app-shadow-lg: 0 8px 32px rgba(0, 0, 18, 0.22);
+  --app-gap: 1.5rem;
+  --app-panel-bg: var(--background-default-grey);
+  --app-mesure: 70ch;
+}
+
+body {
+  text-align: left;
+  background-color: var(--background-alt-grey);
+}
+
+/* --------------------------------------------------------------------------
+   Marqueurs des listes ordonnées.
+
+   Le DSFR écrit le numéro d'une liste ordonnée dans son `::marker`
+   (`ol > li::marker { content: var(--ol-content) }`). Un `content` explicite
+   l'emportant sur `list-style: none`, ce numéro survivait à toutes les listes
+   que l'outil habille lui-même — le fil d'avancement d'une affaire, les étapes
+   du formulaire de création, la prise en main de la page Aide — et venait
+   parasiter leurs propres repères, au point de se lire deux fois lorsque le
+   repère était déjà un numéro (« 1. 1. Paramétrer la section »). Toutes les
+   listes de l'outil portent un nom `app-*` et sont habillées par la feuille :
+   leur marqueur est donc éteint, comme le DSFR éteint le sien pour ses propres
+   grilles (`ol.fr-grid-row > li::marker`).
+   -------------------------------------------------------------------------- */
+
+ol[class^="app-"] > li::marker,
+ol[class*=" app-"] > li::marker {
+  content: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* Navigation principale                                               */
+/* ------------------------------------------------------------------ */
+
+.app-navbar {
+  background: var(--background-default-grey);
+  border-bottom: 1px solid var(--border-default-grey);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.app-navbar__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.app-navbar__list--desktop {
+  display: flex;
+}
+
+.app-navbar__mobile {
+  display: none;
+}
+
+.app-navbar__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 0.9rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--text-default-grey);
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+  background-image: none;
+}
+
+.app-navbar__link:hover,
+.app-navbar__link:focus {
+  color: var(--text-title-blue-france);
+  background-color: var(--background-alt-blue-france);
+}
+
+.app-navbar__link[aria-current="page"] {
+  color: var(--text-title-blue-france);
+  border-bottom-color: var(--border-plain-blue-france);
+  font-weight: 700;
+}
+
+.app-navbar__link .fr-icon--sm,
+.app-navbar__link [class*="fr-icon-"] {
+  --icon-size: 1.1rem;
+}
+
+@media (max-width: 48em) {
+  .app-navbar__list--desktop {
+    display: none;
+  }
+  /* La barre repliée occupe son rang entier : sous elle, les commandes du
+     compte prennent le leur (`app-navbar__outils`, plus bas). */
+  .app-navbar__mobile {
+    display: block;
+    flex: 1 1 100%;
+  }
+  .app-navbar__mobile > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.9rem 0.25rem;
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+    color: var(--text-title-blue-france);
+  }
+  .app-navbar__mobile > summary::-webkit-details-marker {
+    display: none;
+  }
+  .app-navbar__mobile > summary::after {
+    content: "";
+    width: 0.6rem;
+    height: 0.6rem;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
+    transition: transform 0.2s;
+  }
+  .app-navbar__mobile[open] > summary::after {
+    transform: rotate(-135deg);
+  }
+  .app-navbar__mobile .app-navbar__list {
+    flex-direction: column;
+    padding-bottom: 0.5rem;
+  }
+  /* La page courante est rappelée dans le résumé : le menu replié dit où l'on
+     se trouve, sans avoir à le déplier. `margin-left: auto` la pose à droite,
+     juste avant le chevron, sans dépendre de `space-between`. */
+  .app-navbar__courant {
+    margin-left: auto;
+    font-weight: 400;
+    font-size: 0.875rem;
+    color: var(--text-mention-grey);
+  }
+  .app-navbar__link {
+    border-bottom: 0;
+    border-left: 3px solid transparent;
+    width: 100%;
+  }
+  .app-navbar__link[aria-current="page"] {
+    border-left-color: var(--border-plain-blue-france);
+    border-bottom-color: transparent;
+  }
+}
+
+/* Le rang de la barre de navigation.
+
+   Les onglets, puis — à leur droite — les commandes du compte (voir plus bas).
+   Le rang est **souple** : il se replie au lieu de déborder, et met tout sur
+   une ligne tant que la place le permet. Les onglets gardent la gauche, les
+   commandes se rangent au bord droit (`margin-left: auto`). */
+.app-navbar > .fr-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.app-navbar__list--desktop {
+  flex: 1 1 auto;
+}
+
+/* Commandes du compte sur la barre de navigation.
+
+   L'en-tête n'est pas collé : en défilant, il quitte la fenêtre et emporte le
+   bouton « Nouvelle affaire » et le bloc de compte, alors que la barre de
+   navigation, elle, reste. Ces deux commandes y sont donc écrites une seconde
+   fois (`outilsBarreHtml`, app.js), et c'est l'état `entete-reduite` — posé sur
+   <html> par `entete-defilant.js` dès que le bas de l'en-tête a franchi le haut
+   de la fenêtre — qui les fait paraître sur la barre.
+
+   Elles prennent place **sur le rang des onglets**, à leur droite : la barre ne
+   grandit donc pas quand elles arrivent, et rien ne bouge sous elles. La place
+   qu'elles demandent est prise aux onglets, qui se replient sur un rang de plus
+   s'il n'y en a pas assez — et le bloc, lui, passe à la ligne plutôt que de les
+   comprimer.
+
+   Les deux états — fermé, ouvert — sont décrits ici, et **l'animation entre les
+   deux est menée par le script** (`entete-defilant.js`, qui en dit la raison) :
+   la largeur du bloc va de zéro à la largeur de son contenu — la barre s'ouvre
+   vers la gauche, et les onglets cèdent la place au lieu de sauter. Fermé, le
+   bloc ne tient aucune place et n'est ni focusable ni annoncé.
+
+   En deçà de 48em, la barre se replie dans un menu (`app.js`) : il n'y a plus de
+   rang à partager, et les commandes reprennent **leur propre ligne**, sous le
+   menu, révélée par le haut. */
+.app-navbar__outils {
+  display: flex;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  margin-left: auto;
+  /* Fermé, le bloc s'efface dans les deux dimensions : une largeur nulle, et
+     une hauteur nulle. La hauteur compte : sans elle, le bloc — rejeté sur un
+     second rang quand les onglets remplissent le premier — y laisserait une
+     ligne vide, et la barre grandirait d'autant sur toutes les pages. */
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  opacity: 0;
+}
+
+.entete-reduite .app-navbar__outils {
+  width: auto;
+  height: auto;
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Le contenu du bloc : un rang de commandes, alignées à droite comme les
+   outils de l'en-tête. Il garde sa largeur propre (`flex: 0 0 auto`) : c'est le
+   bloc qui s'ouvre, et non le contenu qui se comprime. Le retrait de gauche
+   l'écarte du dernier onglet. */
+.app-navbar__outils-rail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  gap: 0.75rem;
+  padding: 0 0 0 1rem;
+}
+
+@media (max-width: 48em) {
+  /* Sur sa propre ligne, le bloc l'occupe entièrement et se déploie par le
+     haut : c'est la hauteur qui s'ouvre, et le filet qui sépare les commandes
+     du menu court d'un bord à l'autre. */
+  .app-navbar__outils {
+    flex: 1 1 100%;
+    margin-left: 0;
+    width: auto;
+    height: auto;
+    max-height: 0;
+  }
+  .entete-reduite .app-navbar__outils {
+    max-height: 7rem;
+  }
+  .app-navbar__outils-rail {
+    width: 100%;
+    padding: 0.5rem 0 0.6rem;
+    border-top: 1px solid transparent;
+    transform: translateY(-0.7rem);
+  }
+  .entete-reduite .app-navbar__outils-rail {
+    border-top-color: var(--border-default-grey);
+    transform: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Charte neutre.
+
+   Posée par `charte.js` (`appliquerCharte`) sous forme de classe sur <html>
+   lorsque le réglage « Charte graphique » vaut « Charte neutre ». La marque de
+   l'État, elle, n'est pas masquée ici : son balisage n'est pas écrit
+   (`ui.brandBlock`, `app.js`).
+
+   Le DSFR ne pose Marianne que sur `body` et sur les champs de saisie : reposer
+   ces mêmes sélecteurs suffit à l'écarter, sans toucher ni aux couleurs, ni aux
+   composants, ni à la police d'icônes du DSFR, qui passe par ses classes. Le
+   préfixe `html.` porte la spécificité au-dessus de celle du DSFR — et de tout
+   reset que la plateforme ajouterait.
+
+   La police de la charte neutre est **Public Sans**, servie depuis nos propres
+   adresses ; ses déclarations `@font-face` sont posées dans l'en-tête par
+   `appliquerCharte` (voir `charte.js`, source unique de la pile comme des
+   fichiers). La même pile y est écrite ici, et là-bas dans les documents : les
+   deux ne doivent pas diverger.
+   -------------------------------------------------------------------------- */
+
+html.app-charte-neutre body,
+html.app-charte-neutre button,
+html.app-charte-neutre input,
+html.app-charte-neutre select,
+html.app-charte-neutre textarea,
+html.app-charte-neutre optgroup {
+  font-family: "Public Sans", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* --- Couleurs de la charte neutre ----------------------------------------
+
+   La charte neutre ne se distingue pas que par la police : son bleu d'action
+   est décalé d'un cran — teinte 226 au lieu de 240, un peu moins saturé —
+   soit un bleu encre légèrement acier à la place de l'ultramarine de l'État.
+   Le décalage est volontairement discret : la charte neutre reste une charte
+   « à la manière du DSFR », non une autre interface — mais une page ne se
+   confond plus avec une page de la charte de l'État.
+
+   Seuls les jetons de la gamme bleue sont repris ici. Les jetons de décision
+   du DSFR (--text-title-blue-france, --background-action-high-blue-france,
+   --border-active-blue-france…) sont définis à partir d'eux : boutons, liens,
+   onglets, cases à cocher et pastilles suivent donc d'un seul coup. Les
+   autres gammes — gris, vert, rouge, orange — ne changent pas : ce sont les
+   couleurs de sens (succès, alerte, erreur), et elles ne portent pas
+   l'identité de l'État.
+
+   Le thème sombre a sa propre gamme, déclarée par un sélecteur plus
+   spécifique qu'une classe : d'où la deuxième règle. */
+html.app-charte-neutre {
+  --blue-france-sun-113-625: #0b2886;
+  --blue-france-sun-113-625-hover: #2453ed;
+  --blue-france-sun-113-625-active: #345fee;
+  --blue-france-850-200: #ced7f7;
+  --blue-france-main-525: #7490ea;
+  --blue-france-925-125: #e5eafb;
+  --blue-france-925-125-hover: #c5d1f7;
+  --blue-france-925-125-active: #b3c2f3;
+  --blue-france-950-100: #edf1fd;
+  --blue-france-950-100-hover: #d1dbf9;
+  --blue-france-950-100-active: #c0cdf7;
+  --blue-france-975-75: #f6f7fd;
+  --blue-france-975-75-hover: #dee5fa;
+  --blue-france-975-75-active: #cfd8f6;
+  --blue-france-975-sun-113: #f6f7fd;
+}
+
+html[data-fr-theme="dark"].app-charte-neutre {
+  --blue-france-sun-113-625: #8da4ee;
+  --blue-france-sun-113-625-hover: #b6c5f4;
+  --blue-france-sun-113-625-active: #cad4f7;
+  --blue-france-850-200: #364473;
+  --blue-france-main-525: #7490ea;
+  --blue-france-925-125: #293045;
+  --blue-france-925-125-hover: #4e5879;
+  --blue-france-925-125-active: #626c8c;
+  --blue-france-950-100: #23293d;
+  --blue-france-950-100-hover: #465071;
+  --blue-france-950-100-active: #5a6588;
+  --blue-france-975-75: #1d2233;
+  --blue-france-975-75-hover: #3d4765;
+  --blue-france-975-75-active: #515c7f;
+  --blue-france-975-sun-113: #0b2886;
+}
+
+/* ------------------------------------------------------------------ */
+/* Coquille                                                            */
+/* ------------------------------------------------------------------ */
+
+.app-main {
+  padding-top: 1.75rem;
+  padding-bottom: 4rem;
+  min-height: 60vh;
+}
+
+/* Largeur de la coquille.
+
+   Le conteneur du DSFR (`.fr-container`) plafonne à 78rem — soit 1248 px. Sur un
+   écran de 1920 px, la page perd ainsi 336 px de chaque côté, et davantage
+   encore sur un écran plus large : l'outil est un poste de travail, fait de
+   tableaux, de listes et de volets côte à côte, qui se sert de cette place.
+
+   Le plafond est donc relevé et partagé par **toute** la coquille — en-tête,
+   navigation, contenu, pied de page — pour qu'aucun de ces blocs ne se
+   désaligne des autres. Les mesures de lecture restent tenues par les blocs
+   eux-mêmes (`.app-prose`, `.app-page-head__sub`, `.app-dl`), qui ne s'élargissent
+   pas avec la coquille. */
+:root {
+  --app-shell-max: 110rem;
+}
+
+.fr-header .fr-container,
+.app-navbar .fr-container,
+.fr-footer .fr-container,
+.fr-container.app-main {
+  max-width: var(--app-shell-max);
+}
+
+/* Mesure de lecture des textes d'explication.
+
+   Le DSFR ne donne aucune largeur maximale à ses textes d'aide
+   (`.fr-hint-text`) : écrits pour une colonne étroite, ils se lisent d'un trait.
+   Dans une coquille large, une phrase de trois cents caractères s'étend sur plus
+   de seize cents pixels et ne se lit plus — d'autant que ce texte est petit.
+   Les textes d'aide gardent donc une mesure de lecture, sans que le bloc qui les
+   porte perde son alignement ni sa largeur. */
+.fr-hint-text {
+  max-width: var(--app-mesure);
+}
+
+/* Dans une fenêtre modale, la mesure est déjà tenue par la largeur du panneau :
+   les textes d'aide y reprennent donc leur largeur, alignée sur celle des
+   champs qu'ils décrivent. */
+#appModal .fr-hint-text {
+  max-width: none;
+}
+
+/* Le texte d'aide d'un champ se lit **sous le contrôle** (voir `field`,
+   ui.js), et non sous le libellé. Les libellés restent donc courts : d'une
+   colonne à l'autre, ils s'alignent, et les contrôles aussi — là où une aide
+   de cinq lignes dans un libellé décalait tout le champ. Le DSFR ne prévoit
+   cet écart que pour une aide posée après un champ (`fr-input-wrap +
+   .fr-hint-text`) : on le reprend ici pour tous les groupes, et la marge basse
+   que le DSFR réserve sous une aide est laissée au groupe qui la porte. */
+.app-desc {
+  margin: 0.25rem 0 0;
+}
+
+/* L'aide d'une case à cocher ou d'un bouton radio décrit un couple **case +
+   libellé** : elle se place sous lui, alignée sur le texte du libellé, et non
+   à côté — où elle comprime le libellé dès que la colonne est large. */
+.fr-checkbox-group > .app-desc,
+.fr-radio-group > .app-desc {
+  margin-left: 2rem;
+}
+
+.app-header__tools {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Outils d'affichage : plein écran et thème, immédiatement à gauche du bloc
+   utilisateur. Ce bloc reste le dernier de la ligne, donc toujours aligné à
+   droite, même lorsque les outils passent sur plusieurs lignes. */
+.app-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Bloc-marque de l'État, dans l'en-tête.
+
+   Le composant `fr-logo` du DSFR existe en trois tailles —
+
+     en-tête (`.fr-header__logo .fr-logo`)
+       tricolore 33 × 13,5 px, libellé 12,6 px, devise 63 × 45 px
+     pied de page sur écran étroit
+       tricolore 44 × 18 px, libellé 16,8 px, devise 84 × 60 px
+     pied de page dès 48em (`.fr-footer__brand .fr-logo`)
+       tricolore 55 × 22,5 px, libellé 21 px, devise 105 × 75 px
+
+   — et l'en-tête de l'outil porte celui du **milieu**, sans l'agrandissement de
+   48em : tricolore de 44 × 18 px, devise de 84 × 60 px, libellé de 16,8 px, à
+   toutes les largeurs. Ce sont des cotes du DSFR, reprises telles quelles — non
+   réinventées —, et c'est le format où le drapeau, la Marianne et la devise
+   restent lisibles.
+
+   Car la marque de l'en-tête n'est pas seule : elle voisine le **logo de
+   l'opérateur** (`.app-header__operator`, ≈ 3,5 rem), l'emplacement que le
+   DSFR réserve au logo de l'organisme qui porte le service. À la cote du pied
+   de page sur grand écran (libellé de 21 px, marque de 138 px de haut), l'outil
+   donnait à la marque deux fois et demie la hauteur du logo de l'établissement :
+   le logo n'était plus qu'une vignette dans l'ombre de l'État. La marque du
+   haut est un **repère**, celle du bas un **sceau** : elles n'ont pas à être de
+   même taille, et le pied de page garde donc la sienne, sans y toucher.
+
+   Seuls `font-size`, `::before` et `::after` sont repris. Le `margin` négatif
+   n'est **pas** copié : celui de l'en-tête (-0,75rem) annule exactement le
+   rembourrage de `.fr-header__logo`, quand celui du pied de page est calculé
+   pour un autre rembourrage.
+
+   La devise (`::after`) change de `background-position` en thème sombre, pour
+   présenter la version claire du dessin sur fond sombre. La règle du DSFR qui
+   la déplace vise `.fr-header__logo` et l'emporterait donc sur la nôtre : elle
+   garderait la position calculée pour la petite image — celle de l'en-tête —,
+   et n'afficherait plus qu'un morceau de la nôtre. On repose la position
+   nous-mêmes dans les deux thèmes. */
+.fr-header__logo .fr-logo {
+  font-size: 1.05rem;
+}
+.fr-header__logo .fr-logo::before {
+  background-position: 0 -0.0625rem, 0 0, 0 0;
+  background-size: 2.75rem 1.125rem, 2.75rem 1rem, 0;
+  height: 1rem;
+  margin-bottom: 0.3333333333rem;
+  width: 2.75rem;
+}
+.fr-header__logo .fr-logo::after,
+[data-fr-theme="dark"] .fr-header__logo .fr-logo::after {
+  background-position: 0 calc(100% + 1.875rem);
+  background-size: 5.25rem 3.75rem;
+  min-width: 2.625rem;
+  padding-top: 2.2083333333rem;
+}
+[data-fr-theme="dark"] .fr-header__logo .fr-logo::after {
+  background-position: -2.625rem 100%;
+}
+
+/* Bloc-marque : logo de l'État + logo de l'opérateur.
+   Le DSFR laisse ce bloc se comprimer (`flex-shrink` par défaut) et le rogne
+   (`overflow: hidden`). Sur un écran de largeur moyenne, le titre du service
+   et les outils de l'en-tête prennent la place : le logo de l'établissement
+   était alors tronqué sur son bord droit (jusqu'à sa disparition complète
+   autour de 1 024 px). Un logo ne se coupe pas : c'est le titre du service qui
+   se replie. `min-width: 0` sur le service autorise ce repli. */
+.fr-header__brand-top {
+  flex: 0 0 auto;
+}
+
+.fr-header__service {
+  min-width: 0;
+}
+
+/* Logo de l'opérateur : emplacement « opérateur » du DSFR, à droite du
+   bloc-marque de l'État. Le DSFR impose une largeur minimale de 3,5 rem ; on
+   borne aussi la hauteur et la largeur, pour qu'aucun logo — même très allongé
+   ou très haut — ne déforme l'en-tête. */
+.app-header__operator img {
+  height: auto;
+  width: auto;
+  max-height: 3.5rem;
+  max-width: 10rem;
+  object-fit: contain;
+}
+
+/* Aperçu de l'en-tête (Réglages › Identité) : le vrai bloc-marque, encadré,
+   afin que le logo soit jugé sur pièce avant d'être publié. */
+.app-header-preview {
+  background: var(--background-default-grey);
+  border: 1px solid var(--border-default-grey);
+  border-radius: var(--app-radius);
+  padding: 0.5rem;
+  overflow: hidden;
+}
+
+/* Aperçu de la police des documents (Réglages › Charte graphique) : un
+   fragment de courrier, dans la pile de polices réellement appliquée aux
+   documents. Les couleurs sont celles des documents rendus (voir DOCUMENT_CSS,
+   dans render.js), et non les jetons du thème : ce qui s'affiche ici est ce que
+   produira la feuille A4. */
+.app-police-preview {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border-default-grey);
+  border-radius: var(--app-radius);
+  background: #fff;
+  color: #3a3a3a;
+}
+.app-police-preview p {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  text-align: left;
+}
+.app-police-preview__titre { font-weight: 700; color: #161616; }
+.app-police-preview__mention { font-size: 0.8rem; color: #666; margin-bottom: 0; }
+
+/* Bloc-marque du pied de page. Le libellé est coupé en deux par un `<br>`
+   (« République » / « Française ») ; sa largeur naturelle tombe pile sur la
+   largeur disponible, si bien qu'un écart infime de métriques de police (autre
+   navigateur, autre version de Marianne, mise à l'échelle du lecteur) le fait
+   se replier au milieu du mot — « RÉPUBLIQU » puis « E ». Deux lignes, et deux
+   seulement : on interdit donc le repli, la marque de l'État ne se coupe pas. */
+.fr-footer__brand .fr-logo {
+  white-space: nowrap;
+}
+
+/* Bloc utilisateur : nom et rôle, en haut à droite de chaque page. */
+.app-user {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: 0.75rem;
+  border-left: 1px solid var(--border-default-grey);
+  min-height: 2rem;
+}
+
+.app-user__icon {
+  color: var(--text-mention-grey);
+  font-size: 1.25rem;
+}
+
+.app-user__name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-label-grey);
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-user--loading .app-user__name {
+  font-weight: 400;
+  color: var(--text-mention-grey);
+}
+
+@media (max-width: 48em) {
+  /* Sur écran étroit, marque et outils se disputaient la même ligne : le titre
+     du service se repliait sur trois lignes dans une colonne de 190 px, à côté
+     d'outils empilés sur quatre. Les outils prennent donc leur propre ligne,
+     en pleine largeur et alignés à droite — le titre du service tient alors
+     sur une seule ligne. */
+  .fr-header__body-row {
+    flex-wrap: wrap;
+  }
+
+  /* Le bloc d'outils DSFR ne se réduit pas de lui-même : sans min-width nul,
+     il impose sa largeur au cadre et fait déborder l'en-tête sur les écrans
+     étroits. Les éléments se replient alors sur plusieurs lignes. */
+  .fr-header__tools {
+    flex: 1 1 100%;
+    min-width: 0;
+    /* Sur écran étroit, le DSFR supprime le rembourrage de ce bloc : les
+       outils venaient alors se coller au bord de la fenêtre, alors que le
+       titre du service, lui, respecte la marge du conteneur. */
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .app-header__tools {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .app-user {
+    max-width: 100%;
+    min-width: 0;
+    padding-left: 0;
+    border-left: 0;
+    /* Sur écran étroit, le bloc d'outils est serré : sans repli, le nom de
+       l'utilisateur était comprimé à zéro (le badge de rôle, lui, garde sa
+       largeur) et disparaissait purement et simplement. Le badge passe donc à
+       la ligne plutôt que d'écraser le nom. */
+    flex-wrap: wrap;
+  }
+
+  .app-user__name {
+    max-width: 8rem;
+    min-width: 0;
+    flex: 0 1 auto;
+  }
+}
+
+.app-skip {
+  position: absolute;
+  left: -9999px;
+}
+
+.app-skip:focus {
+  left: 1rem;
+  top: 0.5rem;
+  z-index: 100;
+  background: var(--background-default-grey);
+  padding: 0.5rem 1rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* En-tête de page                                                     */
+/* ------------------------------------------------------------------ */
+
+.app-page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.app-kicker {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-title-blue-france);
+}
+
+.app-page-head h1 {
+  margin: 0.15rem 0 0.35rem;
+}
+
+.app-page-head__sub {
+  margin: 0;
+  color: var(--text-mention-grey);
+  font-size: 0.9375rem;
+  max-width: 62ch;
+}
+
+.app-page-head__actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.app-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin: 2rem 0 0.75rem;
+}
+
+.app-section-title h2 {
+  margin: 0;
+}
+
+/* Fil d'Ariane contextuel */
+.app-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+  color: var(--text-mention-grey);
+  margin-bottom: 0.35rem;
+  flex-wrap: wrap;
+}
+
+/* Le lien du fil — « revenir à la liste » — doit se voir comme un lien : le
+   DSFR le souligne par une image de fond, qu'on écarte ici au profit du bleu
+   du titre et d'un soulignement au survol. */
+.app-breadcrumb a {
+  background-image: none;
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-title-blue-france);
+  font-weight: 500;
+}
+
+.app-breadcrumb a:hover,
+.app-breadcrumb a:focus {
+  text-decoration: underline;
+}
+
+/* ------------------------------------------------------------------ */
+/* Indicateurs (KPI)                                                   */
+/* ------------------------------------------------------------------ */
+
+.app-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.app-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1rem 1.1rem;
+  background: var(--background-default-grey);
+  border: 1px solid var(--border-default-grey);
+  border-left: 4px solid var(--border-plain-blue-france);
+  border-radius: var(--app-radius);
+  text-decoration: none;
+  color: inherit;
+  background-image: none;
+  box-shadow: var(--app-shadow);
+}
+
+.app-kpi--link:hover,
+.app-kpi--link:focus {
+  background-color: var(--background-alt-blue-france);
+}
+
+.app-kpi__label {
+  display: flex;
+  align-items: center;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--text-mention-grey);
+}
+
+.app-kpi__value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-title-blue-france);
+}
+
+.app-kpi__hint {
+  font-size: 0.8125rem;
+  color: var(--text-mention-grey);
+}
+
+.app-kpi--warning {
+  border-left-color: var(--border-plain-warning);
+}
+
+.app-kpi--success {
+  border-left-color: var(--border-plain-success);
+}
+
+.app-kpi--error {
+  border-left-color: var(--border-plain-error);
+}
+
+/* ------------------------------------------------------------------ */
+/* Disposition maître / détail                                         */
+/* ------------------------------------------------------------------ */
+
+.app-split {
+  display: grid;
+  grid-template-columns: minmax(17rem, 22rem) minmax(0, 1fr);
+  gap: var(--app-gap);
+  align-items: start;
+}
+
+.app-split--wide-master {
+  grid-template-columns: minmax(20rem, 27rem) minmax(0, 1fr);
+}
+
+.app-split__aside {
+  position: sticky;
+  /* Sous la barre de navigation, et non à une hauteur fixe : la barre tient sur
+     deux rangs dès que la fenêtre se resserre, et la colonne passait alors sous
+     elle (`--app-navbar-h`, publiée par `entete-defilant.js`). */
+  top: calc(var(--app-navbar-h, 3.75rem) + 0.75rem);
+  max-height: calc(100vh - 6rem);
+  overflow: auto;
+  padding-right: 0.25rem;
+  /* Sans cela, une ligne de liste large (une méta insécable) élargit la
+     colonne au-delà de la fenêtre et fait déborder la page (NC-0013). */
+  min-width: 0;
+}
+
+.app-split__main {
+  min-width: 0;
+}
+
+/* Deux colonnes à l'intérieur d'un espace de travail : elles ne s'ouvrent que
+   là où la largeur le permet (un écran large), et se replient l'une sous
+   l'autre sinon. La grille s'adapte à son conteneur, pas à la fenêtre — ce qui
+   permet de la poser dans une colonne maître-détail sans écraser les champs.
+   `min(22rem, 100%)` : sous 22 rem, la piste ne dépasse jamais la largeur
+   disponible — sans quoi elle imposait 352 px et débordait à 320 px (NC-0013). */
+.app-deux-colonnes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
+  gap: var(--app-gap);
+  align-items: start;
+}
+
+/* Le bandeau d'une affaire : l'état, l'échéance d'instruction et les gestes de
+   tête, réunis dans un seul cadre — ils occupaient quatre bandes horizontales. */
+.app-affaire__bande {
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--border-default-grey);
+  border-radius: var(--app-radius);
+  background: var(--app-panel-bg);
+}
+
+.app-affaire__bande-haut {
+  margin-bottom: 0.5rem;
+}
+
+.app-affaire__bande .app-echeance {
+  margin-top: 0.6rem;
+}
+
+/* Le dossier de pièces d'une affaire : son adresse est le seul lien vers le
+   lieu où les pièces sont tenues, hors de l'outil. Le rappel du bandeau dit si
+   elle est déclarée — et l'ouvre —, ou invite à la déclarer ; l'absence se voit
+   sans crier. */
+.app-dossier {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  /* Le rappel est un bloc du bandeau : il s'en détache par un filet en haut, et
+     se détache du cheminement d'état qui le suit par une respiration en bas —
+     sans quoi ses boutons touchaient la ligne des étapes. */
+  margin-top: 0.6rem;
+  margin-bottom: 0.9rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border-default-grey);
+}
+
+.app-dossier__etat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.app-dossier__aide {
+  flex: 1 1 16rem;
+  font-size: 0.875rem;
+  color: var(--text-mention-grey);
+}
+
+.app-dossier--manquant .app-dossier__etat {
+  font-weight: 600;
+  color: var(--text-default-warning);
+}
+
+.app-dossier__manquant {
+  color: var(--text-default-warning);
+}
+
+.app-dossier__declarer,
+.app-dossier__ouvrir,
+.app-dossier__modifier {
+  white-space: nowrap;
+}
+
+/* Les contrôles satisfaits d'une affaire, repliés sous les points à corriger :
+   on ne déplie que ce qui demande une action. */
+.app-controles__reste > summary {
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-title-blue-france);
+}
+
+/* « Plus de champs » : le reste d'un formulaire de décision, replié sous les
+   champs qui décident vraiment — la nature, la sanction, le texte, le motif. */
+.app-plus-de-champs > summary {
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-title-blue-france);
+  padding: 0.35rem 0;
+}
+
+@media (max-width: 62em) {
+  .app-split,
+  .app-split--wide-master {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .app-split__aside {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    min-width: 0;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Listes compactes (sélecteur d'affaires, de sections…)               */
+/* ------------------------------------------------------------------ */
+
+.app-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* La liste des documents occupe toute la largeur de la page : ses lignes s'y
+   rangent en colonnes, plutôt que de s'étirer d'un bord à l'autre — on lit
+   ainsi plusieurs documents du même coup d'œil, et chaque ligne reste une
+   ligne. */
+.app-list--grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+  gap: 0.75rem;
+}
+
+.app-list__item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--border-default-grey);
+  border-radius: var(--app-radius);
+  background: var(--background-default-grey);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  background-image: none;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.app-list__item:hover,
+.app-list__item:focus {
+  background: var(--background-alt-blue-france);
+  border-color: var(--border-plain-blue-france);
+}
+
+.app-list__item.is-selected {
+  border-color: var(--border-active-blue-france);
+  box-shadow: inset 0 0 0 1px var(--border-active-blue-france);
+  background: var(--background-alt-blue-france);
+}
+
+/* Ligne d'une liste qui **présente** sans sélectionner — un dossier vide, par
+   exemple : elle garde la mise en forme d'une ligne, mais pas le curseur ni le
+   survol d'un bouton, qui promettraient une action qui n'existe pas. */
+.app-list__item--statique {
+  cursor: default;
+}
+
+.app-list__item--statique:hover,
+.app-list__item--statique:focus {
+  background: var(--background-default-grey);
+  border-color: var(--border-default-grey);
+}
+
+/* Une affaire dont l'instruction est bornée dans le temps : un filet à gauche
+   porte le ton de l'échéance — le même que son étiquette de clôture —, pour
+   que la liste dise d'un coup d'œil quelles instructions courent vers leur
+   terme, et à quel point le terme approche. Une bordure plutôt qu'un
+   pseudo-élément : `overflow: hidden` sur un `<button>` replierait la ligne
+   sur sa seule première ligne. */
+.app-list__item--echeance-success {
+  --app-echeance-rail: var(--border-plain-success);
+}
+
+.app-list__item--echeance-warning {
+  --app-echeance-rail: var(--border-plain-warning);
+}
+
+.app-list__item--echeance-error {
+  --app-echeance-rail: var(--border-plain-error);
+}
+
+.app-list__item--echeance-blue {
+  --app-echeance-rail: var(--border-plain-blue-france);
+}
+
+.app-list__item--echeance-success,
+.app-list__item--echeance-warning,
+.app-list__item--echeance-error,
+.app-list__item--echeance-blue {
+  border-left: 4px solid var(--app-echeance-rail);
+}
+
+/* Le survol et la sélection changent la couleur de la bordure : le filet de
+   l'échéance, lui, garde la sienne. */
+.app-list__item--echeance-success:hover,
+.app-list__item--echeance-warning:hover,
+.app-list__item--echeance-error:hover,
+.app-list__item--echeance-blue:hover,
+.app-list__item--echeance-success:focus,
+.app-list__item--echeance-warning:focus,
+.app-list__item--echeance-error:focus,
+.app-list__item--echeance-blue:focus,
+.app-list__item--echeance-success.is-selected,
+.app-list__item--echeance-warning.is-selected,
+.app-list__item--echeance-error.is-selected,
+.app-list__item--echeance-blue.is-selected {
+  border-left-color: var(--app-echeance-rail);
+}
+
+.app-list__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.app-list__ref {
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: var(--text-title-blue-france);
+}
+
+/* La flèche d'une ligne qui ouvre une sous-vue : elle annonce que la ligne
+   mène quelque part, et non qu'elle sélectionne une fiche sur place. */
+.app-list__go {
+  flex: none;
+  color: var(--text-mention-grey);
+}
+
+.app-list__name {
+  display: block;
+  font-size: 0.9375rem;
+  margin-top: 0.1rem;
+}
+
+.app-list__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.3rem;
+  font-size: 0.8125rem;
+  color: var(--text-mention-grey);
+}
+
+/* Chaque information de la ligne secondaire (date, régime, ancienneté) reste
+   d'un seul tenant : à l'étroit, c'est la ligne qui se replie, jamais un
+   libellé ou une date qui se coupe en deux (cf. « Enseignants-chercheurs »). */
+.app-list__meta > span {
+  white-space: nowrap;
+  /* Sauf ce qui n'est pas un libellé mais une **énumération** : le périmètre
+     d'une secrétaire, la suite de ses sections. À elle seule plus large que la
+     liste, elle la faisait défiler latéralement au lieu de se replier. */
+  max-width: 100%;
+}
+
+.app-list__meta > .app-list__meta-long {
+  white-space: normal;
+}
+
+/* La mention « dépassée de N jour(s) » d'une ligne de liste porte la couleur de
+   l'alerte : le gris des repères secondaires céderait sinon le pas au ton. */
+.app-list__meta .app-echeance-reste--error {
+  color: var(--text-default-error);
+}
+
+.app-list__count {
+  font-size: 0.8125rem;
+  color: var(--text-mention-grey);
+  margin: 0.35rem 0 0.5rem;
+}
+
+/* Une ligne de liste qui porte aussi une action (supprimer un document) : le
+   lien garde toute la place, l'action se tient à côté, alignée sur lui. Le
+   conteneur est la maille de la grille, d'où le `min-width: 0` : sans lui, un
+   titre long élargirait la colonne au lieu de se replier. */
+.app-list__row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.app-list__row > .app-list__item {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.app-list__row > .fr-btn {
+  flex: none;
+  align-self: center;
+}
+
+/* Registre des trames : rangé par format, et l'action de ligne — la mise à la
+   corbeille — effacée tant qu'on ne la cherche pas. Quarante-quatre croix
+   alignées sur quarante-quatre lignes faisaient un bruit visuel que le registre
+   n'avait pas besoin de porter. */
+.app-trames__groupe + .app-trames__groupe {
+  margin-top: 1.75rem;
+}
+
+.app-trames__groupe-tete {
+  margin-top: 0;
+}
+
+.app-trames__groupe-compte {
+  font-size: 0.8125rem;
+  color: var(--text-mention-grey);
+}
+
+.app-trames__liste .app-list__row > .fr-btn {
+  opacity: 0.3;
+  transition: opacity 0.15s;
+}
+
+.app-trames__liste .app-list__row:hover > .fr-btn,
+.app-trames__liste .app-list__row:focus-within > .fr-btn {
+  opacity: 1;
+}
+
+/* Les repères d'une trame se tiennent serrés à gauche de la carte, et non
+   répartis sur toute sa largeur : à quatre repères, l'espace mis entre eux
+   faisait passer chaque carte à trois ou quatre lignes, et le registre à près
+   de cinq mille pixels. */
+.app-trames__liste .app-list__meta {
+  justify-content: flex-start;
+  gap: 0.15rem 0.5rem;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.app-trames__liste .app-list__item {
+  padding: 0.55rem 0.7rem;
+}
+
+/* Un dossier de documents ne montre « Ouvrir l'affaire » qu'au survol, ou
+   lorsque la tabulation l'atteint : sept dossiers faisaient sept fois le même
+   bouton en tête de carte, à côté du « Nouveau document » de la page. Le bouton
+   reste dans l'ordre de tabulation — la visibilité suit le focus, non l'inverse
+   —, et il s'affiche donc dès qu'on l'atteint au clavier. */
+.app-documents__dossier .fr-panel__actions {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.app-documents__dossier:hover .fr-panel__actions,
+.app-documents__dossier:focus-within .fr-panel__actions {
+  opacity: 1;
+}
+
+/* Dans la grille d'un dossier, la carte est la maille entière : la
+   suppression se range **dans** la carte, à son coin, au lieu de flotter dans
+   l'interstice entre deux cartes — où elle semblait appartenir à la voisine.
+   Elle s'efface tant qu'on ne la cherche pas (comme au registre des trames), et
+   le repère « ouvrir » lui cède le coin : la carte entière est cliquable. */
+.app-documents__dossier .app-list--grille .app-list__row {
+  position: relative;
+}
+
+.app-documents__dossier .app-list--grille .app-list__go {
+  display: none;
+}
+
+.app-documents__dossier .app-list--grille .app-list__row > .fr-btn {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  opacity: 0.3;
+  transition: opacity 0.15s;
+}
+
+.app-documents__dossier .app-list--grille .app-list__row:hover > .fr-btn,
+.app-documents__dossier .app-list--grille .app-list__row:focus-within > .fr-btn {
+  opacity: 1;
+}
+
+/* ------------------------------------------------------------------ */
+/* Panneaux                                                            */
+/* ------------------------------------------------------------------ */
+
+.fr-panel {
+  background: var(--app-panel-bg);
+  border: 1px solid var(--border-default-grey);
+  border-radius: var(--app-radius);
+  margin-bottom: var(--app-gap);
+  overflow: hidden;
+  box-shadow: var(--app-shadow);
+}
+
+.fr-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.7rem 1rem;
+  background: var(--background-alt-blue-france);
+  border-bottom: 1px solid var(--border-default-grey);
+}
+
+.fr-panel__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.fr-panel__header .fr-h6 {
+  color: var(--text-title-blue-france);
+  display: flex;
+  align-items: center;
+  margin: 0;
+}
+
+.fr-panel__actions {
+  margin-left: auto;
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.fr-panel__body {
+  padding: 1.1rem 1rem;
+}
+
+.fr-panel__body--flush {
+  padding: 0;
+}
+
+/* Panneau repliable (contenu de second plan : données calculées, aide…). */
+.app-panel--collapsible > summary.fr-panel__header {
+  cursor: pointer;
+  list-style: none;
+  justify-content: space-between;
+}
+
+.app-panel--collapsible > summary.fr-panel__header::-webkit-details-marker {
+  display: none;
+}
+
+.app-panel--collapsible > summary.fr-panel__header::after {
+  content: "";
+  flex: none;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-right: 0.35rem;
+  border-right: 2px solid var(--text-title-blue-france);
+  border-bottom: 2px solid var(--text-title-blue-france);
+  transform: rotate(45deg);
+  transition: transform 0.2s;
+}
+
+.app-panel--collapsible[open] > summary.fr-panel__header::after {
+  transform: rotate(-135deg);
+}
+
+.app-panel--collapsible > summary.fr-panel__header:hover {
+  background: var(--background-contrast-blue-france);
+}
+
+/* Groupe de champs titré à l'intérieur d'un panneau. */
+.app-fieldset + .app-fieldset {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-default-grey);
+}
+
+.app-fieldset__title {
+  margin: 0 0 0.6rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-title-blue-france);
+}
+
+.app-fieldset__hint {
+  margin: -0.3rem 0 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--text-mention-grey);
+}
+
+.app-fieldset .app-form-grid:last-child {
+  margin-bottom: -1rem;
+}
+
+/* Tête de groupe : le titre à gauche, le bouton « Modifier » à droite. */
+.app-fieldset__tete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.app-fieldset__tete .app-fieldset__title {
+  margin-bottom: 0.6rem;
+}
+
+.app-fieldset__tete .app-fieldset__hint {
+  margin-bottom: 0;
+  flex: 1 1 auto;
+}
+
+/* `margin-left: auto` plutôt qu'un simple `space-between` sur la tête : quand
+   le titre est long, la ligne se replie et le bouton part seul sur la
+   suivante — où `space-between`, sans rien à répartir, le laissait au bord
+   **gauche**. Il reste ainsi au bord droit, comme dans les blocs voisins, à
+   toutes les largeurs. C'est déjà ce que fait `.fr-panel__actions`. */
+.app-fieldset__actions {
+  flex: 0 0 auto;
+  margin-left: auto;
+  margin-bottom: 0.6rem;
+}
+
+/* Un groupe repliable : son en-tête est un `<summary>`, donc cliquable. */
+.app-fieldset--collapsible {
+  border-top: 1px dashed var(--border-default-grey);
+  padding-top: 0.9rem;
+}
+
+.app-fieldset--collapsible > summary.app-fieldset__sommaire {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-title-blue-france);
+}
+
+.app-fieldset--collapsible > summary.app-fieldset__sommaire::-webkit-details-marker {
+  display: none;
+}
+
+/* Le titre occupe la place : le repère de repli le précède, et le bouton du
+   bloc (« Modifier ») vient s'aligner sur le bord droit — celui des autres
+   blocs, dont l'en-tête n'a pas de repère. Un repère posé à droite décalait ce
+   bouton de la largeur d'un signe ; les boutons d'une même fiche cessaient de
+   se répondre verticalement. */
+.app-fieldset__titre {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+}
+
+.app-fieldset__titre::before {
+  content: "+";
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--text-mention-grey);
+  margin-right: 0.5rem;
+}
+
+.app-fieldset--collapsible[open] > summary.app-fieldset__sommaire > .app-fieldset__titre::before {
+  content: "–";
+}
+
+.app-fieldset--collapsible > summary.app-fieldset__sommaire .app-fieldset__actions {
+  margin-bottom: 0;
+}
+
+.app-fieldset--collapsible[open] > summary.app-fieldset__sommaire {
+  margin-bottom: 0.75rem;
+}
+
+.app-fieldset--collapsible[open] > .app-fieldset__hint {
+  margin-top: -0.6rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Cartes                                                              */
+/* ------------------------------------------------------------------ */
+
+.app-card {
+  display: block;
+  background: var(--background-default-grey);
+  border: 1px solid var(--border-default-grey);
+  border-radius: var(--app-radius);
+  padding: 1rem 1.1rem;
+  text-decoration: none;
+  color: inherit;
+  background-image: none;
+  text-align: left;
+  font: inherit;
+  width: 100%;
+}
+
+.app-card--action {
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+.app-card--action:hover,
+.app-card--action:focus {
+  background: var(--background-alt-blue-france);
+  border-color: var(--border-plain-blue-france);
+}
+
+.app-card.is-selected {
+  border-color: var(--border-active-blue-france);
+  box-shadow: inset 0 0 0 1px var(--border-active-blue-france);
+}
+
+.app-card__title {
+  font-weight: 700;
+  color: var(--text-title-blue-france);
+  margin: 0 0 0.25rem;
+}
+
+.app-card__desc {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-mention-grey);
+}
+
+.app-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Onglets                                                             */
+/* ------------------------------------------------------------------ */
+
+.app-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--border-default-grey);
+  margin-bottom: 1.5rem;
+}
+
+.app-tabs__tab {
+  appearance: none;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  padding: 0.7rem 0.9rem;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--text-default-grey);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.app-tabs__tab:hover {
+  background: var(--background-alt-blue-france);
+  color: var(--text-title-blue-france);
+}
+
+.app-tabs__tab[aria-selected="true"] {
+  color: var(--text-title-blue-france);
+  border-bottom-color: var(--border-plain-blue-france);
+  font-weight: 700;
+}
+
+.app-tabs__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.3rem;
+  height: 1.3rem;
+  padding: 0 0.35rem;
+  border-radius: 0.65rem;
+  background: var(--background-contrast-grey);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* Le panneau est la cible de l'onglet : il doit exister pour `aria-controls`,
+   et il reçoit le focus au clavier. L'anneau se dessine autour de lui, sans
+   déplacer son contenu. */
+.app-tabs__panneau:focus-visible {
+  outline: 2px solid var(--border-plain-blue-france);
+  outline-offset: 4px;
+}
+
+/* Sous-navigation (réglages) */
+.app-subnav {
+  margin-bottom: 1.5rem;
+}
+
+.app-subnav__groupe {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.app-subnav__groupe + .app-subnav__groupe {
+  margin-top: 0.5rem;
+}
+
+.app-subnav__groupe-nom {
+  flex: none;
+  min-width: 6.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-mention-grey);
+}
+
+.app-subnav__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.app-subnav__link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--border-default-grey);
+  border-radius: 2rem;
+  font-size: 0.875rem;
+  text-decoration: none;
+  background-image: none;
+  color: var(--text-default-grey);
+}
+
+.app-subnav__link[aria-current="page"] {
+  background: var(--background-alt-blue-france);
+  border-color: var(--border-plain-blue-france);
+  color: var(--text-title-blue-france);
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------------ */
+/* Filtres                                                             */
+/* ------------------------------------------------------------------ */
+
+.app-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.app-filters > * {
+  flex: 1 1 9rem;
+  min-width: 0;
+}
+
+.app-search {
+  display: flex;
+  flex-direction: column;
+  flex: 2 1 14rem;
+}
+
+/* Taille des contrôles de filtre.
+
+   Les contrôles d'une barre de filtres se partagent la ligne en grandissant,
+   ce qui allait tant que la coquille s'arrêtait à 78rem : chacun prenait alors
+   une part raisonnable de la ligne. Depuis que la coquille s'élargit, ce
+   partage étire les contrôles bien au-delà de ce qu'ils portent — un champ de
+   recherche de six cents pixels pour une amorce de trente caractères, un menu
+   de trois cents pour l'énoncé « Toutes les sections ». Chaque contrôle
+   retrouve donc un plafond : la barre cesse de s'étirer, et ce qui reste à
+   droite est laissé vide, selon l'usage d'une barre de filtres. */
+.app-filters > .app-search,
+.app-filters > .fr-input {
+  max-width: 28rem;
+}
+
+.app-filters > .fr-select-group {
+  max-width: 24rem;
+}
+
+/* Sur un écran large, les contrôles plafonnés ne remplissent plus la bande :
+   l'espace restant est alors réparti **entre** eux plutôt que laissé en bloc à
+   droite, ce qui donne une barre qui occupe sa bande sans qu'aucun contrôle ne
+   s'étire. Sous 62em, la barre se replie sur plusieurs lignes et les contrôles
+   restent alignés à gauche. */
+@media (min-width: 62em) {
+  .app-filters--page {
+    justify-content: space-between;
+  }
+}
+
+/* Un champ posé **en ligne** — dans une barre de filtres — ne porte jamais la
+   marge basse dont le DSFR espace deux champs **empilés** :
+
+     .fr-select-group:not(:last-child) { margin-bottom: 1.5rem; }
+
+   Cette marge a une spécificité (0,2,0), et `margin: 0` seul (0,1,0) ne
+   l'annulait donc que sur le **dernier** champ — celui auquel le DSFR ne touche
+   pas. Les autres gardaient vingt-quatre pixels sous eux ; or la barre aligne
+   ses champs par le bas (`align-items: flex-end`), si bien que la marge
+   fantôme les **décollait** des voisins : libellés et contrôles se lisaient en
+   escalier. Les sélecteurs ci-dessous égalent la règle du DSFR, et la dépassent
+   (0,3,0) dans une barre de filtres. */
+.app-select-inline,
+.app-select-inline:not(:last-child),
+.app-filters > .fr-select-group:not(:last-child),
+.app-filters > .fr-input-group:not(:last-child) {
+  margin: 0;
+}
+
+.app-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.app-chip {
+  appearance: none;
+  border: 1px solid var(--border-default-grey);
+  background: var(--background-default-grey);
+  border-radius: 2rem;
+  padding: 0.35rem 0.75rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--text-default-grey);
+}
+
+.app-chip:hover {
+  background: var(--background-alt-blue-france);
+}
+
+.app-chip.is-active {
+  background: var(--background-alt-blue-france);
+  border-color: var(--border-plain-blue-france);
+  color: var(--text-title-blue-france);
+  font-weight: 700;
+}
+
+.app-chip__count {
+  font-size: 0.75rem;
+  color: var(--text-mention-grey);
+}
+
+/* ------------------------------------------------------------------ */
+/* Cheminement d'état                                                  */
+/* ------------------------------------------------------------------ */
+
+.app-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  list-style: none;
+  margin: 0 0 1.25rem;
+  padding: 0;
+}
+
+.app-flow__step {
+  flex: 1 1 8rem;
+  position: relative;
+}
+
+.app-flow__btn {
+  width: 100%;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0.6rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  color: var(--text-mention-grey);
+  border-top: 3px solid var(--border-default-grey);
+}
+
+.app-flow__step.is-done .app-flow__btn {
+  color: var(--text-default-grey);
+  border-top-color: var(--border-plain-success);
+}
+
+.app-flow__step.is-current .app-flow__btn {
+  color: var(--text-title-blue-france);
+  font-weight: 700;
+  border-top-color: var(--border-plain-blue-france);
+}
+
+.app-flow__btn:hover {
+  background: var(--background-alt-blue-france);
+}
+
+.app-flow__marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--background-contrast-grey);
+  font-weight: 700;
+  font-size: 0.8125rem;
+}
+
+.app-flow__step.is-done .app-flow__marker {
+  background: var(--background-action-low-green-emeraude);
+  color: var(--text-default-success);
+}
+
+.app-flow__step.is-current .app-flow__marker {
+  background: var(--background-action-high-blue-france);
+  color: var(--text-inverted-blue-france);
+}
+
+.app-flow__label {
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* ------------------------------------------------------------------ */
+/* Formulaires                                                         */
+/* ------------------------------------------------------------------ */
+
+.app-form-grid .fr-input-group,
+.app-form-grid .fr-select-group,
+.app-form-grid .fr-checkbox-group {
+  margin-bottom: 1rem;
+}
+
+/* Alignement des champs d'une même ligne.
+
+   Le DSFR empile, dans chaque cellule, le libellé (et son texte d'aide) puis le
+   contrôle de saisie. Quand deux champs voisins n'ont pas le même nombre de
+   lignes de libellé — l'un porte une aide de trois lignes, l'autre pas —, leurs
+   zones de saisie se retrouvent à des hauteurs différentes : l'écart atteint
+   couramment 20 px, et jusqu'à 130 px sur les fiches les plus bavardes. La
+   grille se lit alors en escalier, et le champ de droite paraît détaché de son
+   voisin.
+
+   On donne donc à chaque libellé d'une ligne la hauteur du **plus haut** : les
+   libellés gardent leur première ligne alignée en tête — c'est elle qu'on lit —
+   et les contrôles, qui suivent leur libellé, commencent tous à la même
+   hauteur, quelle que soit celle de leur voisin.
+
+   Cette hauteur ne peut pas se calculer en CSS : elle dépend du texte de chaque
+   libellé et de la largeur disponible, donc des retours à la ligne. Elle est
+   donc **mesurée après le rendu** (`alignement.js`, qui suit aussi les
+   changements de largeur et l'ouverture des blocs repliables) et posée sur les
+   cellules dans `--champ-label-h`. La feuille de style ne fait que la lire.
+   Hors mesure — une bande d'un seul champ, ou avant le premier passage —, la
+   variable vaut 0 et les règles ci-dessous sont sans effet.
+
+   Une case à cocher n'a pas de contrôle **sous** son libellé : c'est sa case,
+   posée à côté du texte, qui descend à la hauteur des contrôles voisins — d'un
+   bloc avec son libellé, donc par une marge sur le groupe (une marge déplace
+   aussi la case, qui est positionnée en absolu dans le groupe). Un bouton posé
+   à côté d'un champ (`.app-field-action`) descend de même. */
+.fr-grid-row > [class*="fr-col-"] {
+  --champ-label-h: 0px;
+}
+
+.fr-grid-row > [class*="fr-col-"] > .fr-input-group > .fr-label,
+.fr-grid-row > [class*="fr-col-"] > .fr-select-group > .fr-label {
+  min-height: var(--champ-label-h);
+}
+
+.fr-grid-row > [class*="fr-col-"] > .fr-checkbox-group,
+.fr-grid-row > [class*="fr-col-"] > .app-field-action > .fr-btn {
+  margin-top: var(--champ-label-h);
+}
+
+.app-readonly {
+  padding: 0.4rem 0;
+  min-height: 2.5rem;
+  color: var(--text-default-grey);
+}
+
+/* Le tiret d'une valeur absente, en lecture : le gris des mentions, pour qu'il
+   se lise comme « rien à cette place » et non comme la valeur elle-même. */
+.app-vide {
+  color: var(--text-mention-grey);
+}
+
+/* L'écart du DSFR entre un libellé et son contrôle — `.fr-label + .fr-input`,
+   `.fr-label + .fr-select` (0,5 rem) — ne vaut que pour les champs natifs. Un
+   contrôle composé est un `div` : le sélecteur ne le voit pas, et le champ se
+   place 8 px plus haut que ses voisins. Il reprend donc le même écart, partout
+   où il suit un libellé — une valeur en lecture seule, une date, une liste de
+   cases à cocher, ou la recherche d'un menu déroulant, qui prend la place du
+   `<select>` —, afin de s'aligner sur les champs de saisie qui l'entourent. */
+.fr-label + .app-date,
+.fr-label + .app-readonly,
+.fr-label + .app-checklist,
+.fr-label + .app-combobox {
+  margin-top: 0.5rem;
+}
+
+.app-required {
+  color: var(--text-default-error);
+}
+
+.app-field--compact .fr-select,
+.app-field--compact .fr-input {
+  margin-bottom: 0;
+  font-size: 0.875rem;
+  min-height: 2.25rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.app-field--compact .fr-select {
+  padding-right: 2rem;
+  background-size: calc(100% - 1rem) 1px, 1rem 1rem;
+  background-position: 0.5rem calc(100% - 0.75rem), calc(100% - 0.5rem) calc(100% - 0.5rem);
+}
+
+/* Case à cocher et son aide, l'une sous l'autre.
+
+   La case elle-même est posée en absolu par le DSFR : il ne reste dans le flux
+   que le libellé, puis la phrase d'aide. Ce sont donc deux lignes — une grille
+   d'une seule colonne, où chaque enfant tient sa ligne — et non deux colonnes
+   d'un flex : un flex les mettrait côte à côte, car la phrase peut s'y
+   comprimer (`.fr-hint-text` porte une mesure de lecture, donc une largeur
+   maximale, et rien ne l'empêche alors de tenir à côté du libellé). Le libellé
+   garde la largeur de son texte (`justify-items`), comme dans un flex. */
+.app-check {
+  display: grid;
+  grid-template-columns: 1fr;
+  justify-items: start;
+}
+
+/* Rappel du signataire d'un courrier, sous sa case à cocher (paramètres du
+   document) : qui signera, une fois le réglage appliqué. */
+.app-signataire {
+  margin: 0.75rem 0 0;
+  font-size: 0.875rem;
+  color: var(--text-mention-grey);
+}
+
+.app-signataire strong {
+  color: var(--text-default-grey);
+}
+
+.app-multi {
+  min-height: 6rem;
+  padding: 0.25rem;
+}
+
+/* Liste de cases à cocher (colonnes `RefList`) --------------------- */
+
+/* Une liste de références se coche ligne à ligne, plutôt que de se choisir
+   dans un menu à choix multiples : le geste est le même pour ajouter et pour
+   retirer, et deux rattachements se voient d'un coup d'œil. Le cadre reprend
+   celui des champs du DSFR, et la liste défile au-delà d'une dizaine de
+   lignes — une section peut avoir beaucoup de secrétaires. */
+.app-checklist {
+  border: 1px solid var(--border-default-grey);
+  border-radius: var(--app-radius);
+  background: var(--background-default-grey);
+  padding: 0.35rem;
+  max-height: 15rem;
+  overflow-y: auto;
+}
+
+.app-checklist__item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+
+.app-checklist__item:hover {
+  background: var(--background-alt-blue-france);
+}
+
+.app-checklist__item input {
+  flex: none;
+  margin: 0;
+}
+
+.app-checklist__nom {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* La précision d'une ligne (le sigle d'une section, l'objet d'une trame) :
+   elle informe sans disputer la place au nom. */
+.app-checklist__meta {
+  flex: none;
+  font-size: 0.8125rem;
+  color: var(--text-mention-grey);
+}
+
+.app-checklist__vide {
+  margin: 0.35rem 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-mention-grey);
+}
+
+.app-checklist--readonly {
+  opacity: 0.6;
+}
+
+/* Champ de date ---------------------------------------------------- */
+
+/* Le champ de texte et le bouton de calendrier tiennent sur une ligne. Le
+   champ natif masqué sert de sélecteur : il reste rendu (un champ en
+   `display:none` ne peut pas ouvrir son sélecteur) mais invisible et hors du
+   parcours au clavier. */
+.app-date {
+  display: flex;
+  align-items: stretch;
+  gap: 0.25rem;
+}
+
+.app-date__champ {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.app-date__bouton {
+  flex: 0 0 auto;
+  margin: 0;
+  min-height: 2.5rem;
+  padding: 0 0.75rem;
+}
+
+.app-date__natif {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Repli, pour les navigateurs sans sélecteur : le champ natif est découvert
+   le temps du choix. */
+.app-date__natif--ouvert {
+  position: static;
+  width: auto;
+  height: auto;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.app-readonly-lg {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Recherche dans les listes déroulantes (EX-061)                      */
+/* ------------------------------------------------------------------ */
+
+/* Le contrôle visible remplace le `<select>`, qui reste dans la page —
+   masqué — comme source de la valeur (voir `select-recherche.js`). Il en
+   reprend la forme : le champ a la hauteur et la bordure d'un `fr-input`, et un
+   chevron au bord droit dit que la liste s'ouvre. */
+.app-combobox {
+  position: relative;
+}
+
+.app-combobox__champ {
+  padding-right: 2.75rem;
+  text-overflow: ellipsis;
+}
+
+.app-combobox__chevron {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-default-grey);
+  cursor: pointer;
+}
+
+.app-combobox--desactive .app-combobox__chevron {
+  color: var(--text-disabled-grey);
+  cursor: default;
+}
+
+/* Chevron dessiné par deux bordures, comme celui du menu de sorties : il pointe
+   vers le bas fermé, vers le haut ouvert — sans image ni police d'icônes. */
+.app-combobox__fleche {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-0.15rem) rotate(45deg);
+}
+
+.app-combobox.is-open .app-combobox__fleche {
+  transform: translateY(0.1rem) rotate(-135deg);
+}
+
+/* La liste déroulée est déposée dans le `<body>`, en position fixe : dans le
+   corps défilant d'une fenêtre modale, une liste posée dans le champ serait
+   rognée. Elle passe donc au-dessus de la fenêtre modale (1000) et reste sous
+   les notifications (2500). */
+.app-combobox-portail {
+  position: fixed;
+  z-index: 1050;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-width: calc(100vw - 1rem);
+  background: var(--background-default-grey);
+  border: 1px solid var(--border-default-grey);
+  border-radius: 0.25rem;
+  box-shadow: 0 6px 18px rgba(0, 0, 18, 0.22);
+}
+
+.app-combobox-liste {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.25rem 0;
+  list-style: none;
+  /* Une longue liste se parcourt au doigt comme à la molette. Le défilement
+     vertical est déclaré ici (`touch-action`) plutôt que laissé au défaut du
+     navigateur, et il ne se prolonge pas à la page en dessous une fois la
+     dernière proposition atteinte : la liste est posée au-dessus, et le
+     défilement de la page ne doit pas se déclencher sous le doigt qui la
+     parcourt. */
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+
+.app-combobox-liste__entree {
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+/* L'intertitre d'un groupe de propositions — le collège des intervenants,
+   repris du `<optgroup>` du menu natif. La liste ouverte ne montre que des
+   noms, et un nom ne dit pas de quel collège relève celui qui le porte. Un
+   filet sépare les groupes, comme celui qui précède la note. */
+.app-combobox-liste__groupe {
+  padding: 0.5rem 0.75rem 0.15rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-mention-grey);
+}
+
+.app-combobox-liste__groupe:not(:first-child) {
+  border-top: 1px solid var(--border-default-grey);
+}
+
+.app-combobox-liste__entree:hover {
+  background: var(--background-alt-blue-france-hover);
+}
+
+/* L'entrée désignée au clavier se distingue du survol : elle doit se voir même
+   quand la souris est ailleurs, puisque c'est elle que la touche Entrée
+   validera. */
+.app-combobox-liste__entree.is-actif {
+  background: var(--background-action-low-blue-france);
+}
+
+.app-combobox-liste__entree[aria-selected="true"] {
+  font-weight: 700;
+}
+
+.app-combobox-liste__entree--vide {
+  color: var(--text-mention-grey);
+}
+
+/* Le mot trouvé se met en avant : la marque du navigateur est jaune, elle
+   jurerait au milieu de la liste. */
+.app-combobox-liste__trouve {
+  background: none;
+  color: var(--text-action-high-blue-france);
+  font-weight: 700;
+}
+
+.app-combobox-liste__note {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--border-default-grey);
+  font-size: 0.8125rem;
+  color: var(--text-mention-grey);
+}
+
+/* Dans un **tableau compact** ou un **champ compact**, la recherche reprend la
+   taille de ses voisins (`fr-table--sm`, `app-table--dense`, `app-field--compact`
+   réduisent le rembourrage des champs natifs) : le champ et le chevron, qui doit
+   lui laisser la place. La spécificité dépasse celle des règles de tableau, qui
+   sont écrites plus bas dans cette feuille. */
+.fr-table--sm .app-combobox .app-combobox__champ,
+.app-field--compact .app-combobox .app-combobox__champ {
+  padding-right: 1.9rem;
+}
+
+.fr-table--sm .app-combobox .app-combobox__chevron,
+.app-field--compact .app-combobox .app-combobox__chevron {
+  width: 1.6rem;
+}
+
+.fr-table.app-table--dense .app-combobox .app-combobox__champ {
+  padding-right: 1.55rem;
+}
+
+.fr-table.app-table--dense .app-combobox .app-combobox__chevron {
+  width: 1.25rem;
+}
+
+.fr-table--sm .app-combobox .app-combobox__fleche,
+.app-field--compact .app-combobox .app-combobox__fleche {
+  width: 0.4rem;
+  height: 0.4rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Listes de définitions                                               */
+/* ------------------------------------------------------------------ */
+
+/* Une liste de définitions se compose en **flex** plutôt qu'en grille : la
+   largeur du libellé se déduit de son texte (bornée), et la valeur prend tout
+   le reste. En grille, la colonne des libellés s'élargissait jusqu'à son
+   maximum même dans une colonne étroite — le détail d'une séance occupe un
+   cinquième de la page —, ne laissant à la valeur qu'une quarantaine de
+   pixels, où le texte se coupait caractère par caractère et faisait dix fois la
+   hauteur attendue. */
+.app-dl {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 0.35rem 1rem;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.app-dl dt {
+  flex: 0 1 auto;
+  min-width: 4.5rem;
+  max-width: 11rem;
+  font-weight: 700;
+  color: var(--text-mention-grey);
+}
+
+.app-dl dd {
+  flex: 1 1 8rem;
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Variante en lignes : un couple par ligne, libellé à gauche, valeur à droite,
+   séparés par un filet — la présentation d'une fiche. Là où la grille fluide
+   entrelace les couples, celle-ci garde l'alignement quand une valeur s'allonge
+   sur plusieurs lignes. */
+.app-dl--lignes {
+  display: block;
+}
+
+.app-dl--lignes > .app-dl__row {
+  display: grid;
+  grid-template-columns: minmax(8rem, 12rem) minmax(0, 1fr);
+  column-gap: 1.25rem;
+  align-items: baseline;
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--border-default-grey);
+}
+
+.app-dl--lignes > .app-dl__row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.app-dl--lignes > .app-dl__row:last-child {
+  padding-bottom: 0;
+}
+
+.app-dl--lignes dt {
+  flex: none;
+  min-width: 0;
+  max-width: none;
+}
+
+.app-dl--lignes dd {
+  flex: none;
+}
+
+@media (max-width: 36em) {
+  .app-dl {
+    gap: 0 0;
+  }
+  .app-dl dt {
+    flex: 0 0 100%;
+    min-width: 0;
+    max-width: none;
+    margin-top: 0.4rem;
+  }
+  .app-dl dd {
+    flex: 0 0 100%;
+  }
+  .app-dl--lignes > .app-dl__row {
+    grid-template-columns: minmax(0, 1fr);
+    column-gap: 0;
+    row-gap: 0.15rem;
+    padding: 0.6rem 0;
+  }
+  .app-dl--lignes dt {
+    margin-top: 0;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Tableaux                                                            */
+/* ------------------------------------------------------------------ */
+
+.fr-table--sm .fr-input,
+.fr-table--sm .fr-select {
+  margin-bottom: 0;
+  font-size: 0.875rem;
+  min-height: 2.25rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.fr-table--sm .fr-select {
+  padding-right: 2rem;
+}
+
+/* Tableau dense : réservé aux grilles très longues (membres d'une section). */
+.fr-table.app-table--dense table th,
+.fr-table.app-table--dense table td {
+  padding: 0.3rem 0.5rem;
+  vertical-align: middle;
+}
+
+/* « Affaires à traiter », au tableau de bord : six colonnes dans la moitié de
+   la page. Le rembourrage du DSFR le faisait déborder de seize pixels sur son
+   cadre — l'« Ancienneté » à moitié dehors, et une barre de défilement sous
+   sept lignes. On serre ici le rembourrage latéral plutôt que de retirer une
+   colonne : le tableau tient, et rien n'est perdu. */
+.fr-table.app-table--traiter table th,
+.fr-table.app-table--traiter table td {
+  padding-left: 0.45rem;
+  padding-right: 0.45rem;
+}
+
+.fr-table.app-table--dense .fr-select,
+.fr-table.app-table--dense .fr-input {
+  min-height: 2rem;
+  font-size: 0.8125rem;
+  padding: 0.15rem 0.4rem;
+}
+
+.fr-table.app-table--dense .fr-select {
+  padding-right: 1.75rem;
+}
+
+.fr-table.app-table--dense .fr-btn--sm {
+  min-height: 1.75rem;
+  padding: 0.15rem 0.35rem;
+}
+
+/* Colonne « Texte de référence » des catalogues : la citation est ce qui
+   permet de vérifier une sanction. Elle est longue, et le champ qui la porte
+   ne peut pas se replier : on lui donne donc la largeur qui la laisse lisible,
+   quitte à serrer les colonnes voisines. */
+.fr-table.app-table--catalogue th.app-cell-ref,
+.fr-table.app-table--catalogue td.app-cell-ref {
+  min-width: 20rem;
+}
+
+.fr-table.app-table--catalogue .app-cell-ref .fr-input {
+  text-overflow: ellipsis;
+}
+
+.fr-table tbody tr[data-select],
+.fr-table tbody tr[data-row-link] {
+  cursor: pointer;
+}
+
+.fr-table tbody tr[data-select]:hover > td,
+.fr-table tbody tr[data-row-link]:hover > td {
+  background-color: var(--background-alt-blue-france);
+}
+
+.fr-row--selected > td {
+  background-color: var(--background-alt-blue-france) !important;
+  box-shadow: inset 3px 0 0 var(--border-plain-blue-france);
+}
+
+.app-cell-action {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* Écrire à quelqu'un : l'adresse, et l'icône qui dit que le clic ouvre le
+   logiciel de messagerie. Le lien garde l'aspect d'un lien du DSFR ; l'icône,
+   elle, n'est pas soulignée. */
+.app-contact {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.app-contact__icone {
+  flex: none;
+  font-size: 1rem;
+}
+
+/* La barre des écritures d'une affaire : les liens `mailto:` d'un panneau,
+   qui se replient sur l'écran étroit plutôt que de déborder. */
+.app-contacts__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.app-table-actions {
+  display: flex;
+  gap: 0.25rem;
+  justify-content: flex-end;
+}
+
+.app-th--sortable {
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------------ */
+/* Étiquettes, badges                                                  */
+/* ------------------------------------------------------------------ */
+
+.app-badge {
+  display: inline-block;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.app-tag {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  background: var(--background-contrast-grey);
+  color: var(--text-default-grey);
+}
+
+.app-tag--blue {
+  background: var(--background-alt-blue-france);
+  color: var(--text-title-blue-france);
+}
+
+.app-tag--warning {
+  background: var(--background-alt-yellow-tournesol);
+  color: var(--text-default-warning);
+}
+
+.app-tag--error {
+  background: var(--background-alt-red-marianne);
+  color: var(--text-default-error);
+}
+
+.app-tag--success {
+  background: var(--background-alt-green-emeraude);
+  color: var(--text-default-success);
+}
+
+/* L'icône d'une étiquette : elle se cale sur la ligne de texte, à hauteur de
+   la pastille, et laisse une petite respiration avant le libellé. La taille se
+   règle sur le pseudo-élément, où le DSFR pose la sienne. */
+.app-tag__icone {
+  margin-right: 0.25rem;
+}
+
+.app-tag__icone [class*="fr-icon-"]::before {
+  --icon-size: 1rem;
+  vertical-align: -0.125rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Échéance d'instruction                                              */
+/* ------------------------------------------------------------------ */
+
+/* Le bandeau d'échéance d'instruction. L'instruction dure un temps compté, et
+   ce terme se lit d'un coup d'œil — la date, les jours restants, et ce qui l'a
+   fixé quand une prolongation est intervenue. Le filet à gauche porte le ton :
+   vert tant que le délai court, jaune quand il s'approche, rouge quand il est
+   dépassé, bleu lorsqu'aucune date ne permet encore de le décompter. */
+.app-echeance {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border-default-grey);
+  border-left: 4px solid var(--border-default-grey);
+  border-radius: var(--app-radius);
+  background: var(--background-default-grey);
+  margin-bottom: 1rem;
+}
+
+.app-echeance__icone {
+  flex: none;
+  color: var(--text-mention-grey);
+}
+
+/* Le DSFR pose lui-même la taille de l'icône sur son pseudo-élément : c'est
+   donc là qu'il faut la régler, et non sur le porte-icône. */
+.app-echeance__icone [class*="fr-icon-"]::before {
+  --icon-size: 1.25rem;
+}
+
+.app-echeance__corps {
+  min-width: 0;
+}
+
+.app-echeance__titre {
+  margin: 0;
+  font-weight: 500;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.app-echeance__detail {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  color: var(--text-mention-grey);
+}
+
+.app-echeance--compact {
+  padding: 0.5rem 0.75rem;
+}
+
+.app-echeance--compact .app-echeance__icone [class*="fr-icon-"]::before {
+  --icon-size: 1rem;
+}
+
+.app-echeance--compact .app-echeance__detail {
+  font-size: 0.8125rem;
+}
+
+.app-echeance--blue {
+  background: var(--background-alt-blue-france);
+  border-left-color: var(--border-plain-blue-france);
+}
+
+.app-echeance--blue .app-echeance__icone {
+  color: var(--text-title-blue-france);
+}
+
+.app-echeance--success {
+  background: var(--background-alt-green-emeraude);
+  border-left-color: var(--border-plain-success);
+}
+
+.app-echeance--success .app-echeance__icone {
+  color: var(--text-default-success);
+}
+
+.app-echeance--warning {
+  background: var(--background-alt-yellow-tournesol);
+  border-left-color: var(--border-plain-warning);
+}
+
+.app-echeance--warning .app-echeance__icone {
+  color: var(--text-default-warning);
+}
+
+.app-echeance--error {
+  background: var(--background-alt-red-marianne);
+  border-left-color: var(--border-plain-error);
+}
+
+.app-echeance--error .app-echeance__icone {
+  color: var(--text-default-error);
+}
+
+/* ------------------------------------------------------------------ */
+/* Séances d'examen                                                    */
+/* ------------------------------------------------------------------ */
+
+.app-seance {
+  border: 1px solid var(--border-default-grey);
+  border-radius: var(--app-radius);
+  background: var(--background-default-grey);
+  margin-bottom: 1rem;
+  overflow: hidden;
+  box-shadow: var(--app-shadow);
+}
+
+.app-seance__head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem;
+  background: var(--background-alt-blue-france);
+  border-bottom: 1px solid var(--border-default-grey);
+}
+
+.app-seance__date {
+  font-weight: 700;
+  color: var(--text-title-blue-france);
+}
+
+.app-seance__body {
+  padding: 1rem;
+}
+
+.app-seance__role {
+  margin-top: 1rem;
+}
+
+.app-seance__taille {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.app-seance__slot {
+  flex: 1 1 10rem;
+}
+
+.app-seance__slot-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-mention-grey);
+  margin: 0 0 0.1rem;
+}
+
+.app-seance__slot-value {
+  margin: 0;
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------------ */
+/* Aperçu de document et éditeur de trame                              */
+/* ------------------------------------------------------------------ */
+
+.app-doc-preview {
+  background: var(--background-contrast-grey);
+  border: 1px solid var(--border-default-grey);
+  border-radius: var(--app-radius);
+  padding: 0.5rem;
+}
+
+.app-doc-preview iframe {
+  display: block;
+  width: 100%;
+  height: 40rem;
+  border: 0;
+  /* Le cadre montre une feuille de papier : il reste blanc, comme le
+     document imprimé, y compris en thème sombre. */
+  background: white;
+}
+
+/* ------------------------------------------------------------------ */
+/* Export des documents                                                */
+/* ------------------------------------------------------------------ */
+
+.app-export__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.app-export__status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Export tabulaire (CSV, Excel) : deux boutons et leur indicateur d'activité,
+   posés dans l'en-tête d'une liste ou d'un panneau. Ils se replient ensemble,
+   sans couper le libellé. */
+.app-export-inline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.app-export__status--busy {
+  color: var(--text-title-blue-france);
+}
+
+/* L'option d'export anonyme d'une décision : une case au-dessus des boutons,
+   avec sa phrase d'explication — elle engage la confidentialité du fichier, et
+   se lit avant de cliquer. */
+.app-export__anonyme {
+  margin-bottom: 1rem;
+  max-width: 46rem;
+}
+
+.app-export__anonyme .fr-label {
+  margin-bottom: 0;
+}
+
+.app-export__anonyme .fr-hint-text {
+  margin-bottom: 0;
+}
+
+/* Indicateur d'activité : la préparation d'un export dure quelques secondes. */
+.app-spinner {
+  display: inline-block;
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--border-default-grey);
+  border-top-color: var(--border-plain-blue-france);
+  border-radius: 50%;
+  animation: app-spin 0.8s linear infinite;
+}
+
+@keyframes app-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-spinner {
+    animation-duration: 2.4s;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Menu déroulant (« Exporter »)                                       */
+/* ------------------------------------------------------------------ */
+
+/* Un seul bouton déplie les sorties de fichier d'une page — impression, PDF,
+   Word, OpenDocument, CSV, Excel — au lieu de les aligner toutes. C'est un
+   `<details>` natif : il s'ouvre au clavier, sans JavaScript, et les boutons
+   qu'il contient gardent leurs attributs d'action. */
+.app-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.app-menu > summary {
+  display: inline-flex;
+  align-items: center;
+  list-style: none;
+  cursor: pointer;
+}
+
+.app-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Le chevron est dessiné par deux bordures : il pointe vers le bas fermé, vers
+   le haut ouvert — sans image ni police d'icônes supplémentaire. */
+.app-menu > summary::after {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-left: 0.6rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-0.15rem) rotate(45deg);
+}
+
+.app-menu[open] > summary::after {
+  transform: translateY(0.15rem) rotate(-135deg);
+}
+
+.app-menu__panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.25rem);
+  z-index: 30;
+  min-width: 16.5rem;
+  max-width: calc(100vw - 2rem);
+  padding: 0.35rem;
+  background: var(--background-default-grey);
+  border: 1px solid var(--border-default-grey);
+  border-radius: 0.25rem;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
+}
+
+/* Dans le menu, chaque bouton se lit comme une entrée : pleine largeur, sans
+   cadre ni ombre — le survol suffit à désigner l'entrée visée. */
+.app-menu__panel .fr-btn {
+  display: flex;
+  width: 100%;
+  justify-content: flex-start;
+  margin: 0;
+  text-align: left;
+  border: none;
+  box-shadow: none;
+  background: none;
+  background-image: none;
+  color: var(--text-default-grey);
+  white-space: nowrap;
+}
+
+.app-menu__panel .fr-btn:hover,
+.app-menu__panel .fr-btn:focus {
+  background: var(--background-alt-blue-france);
+}
+
+.app-menu__panel .app-export__buttons,
+.app-menu__panel .app-export-inline {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.1rem;
+}
+
+/* Écran d'attente du branchement sur un document Grist (voir
+   `loadingShellHtml`) : aucune donnée n'est montrée tant que le document n'a
+   pas répondu. */
+.app-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 5rem 1rem;
+  text-align: center;
+}
+
+.app-loading__spinner {
+  width: 2rem;
+  height: 2rem;
+  border-width: 3px;
+}
+
+.app-loading__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-title-blue-france);
+}
+
+.app-loading__hint {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-mention-grey);
+}
+
+/* ------------------------------------------------------------------ */
+/* Éditeur WYSIWYG de trame                                            */
+/* ------------------------------------------------------------------ */
+
+.app-wysiwyg__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border-default-grey);
+  border-radius: var(--app-radius);
+  background: var(--background-alt-grey);
+  grid-column: 1 / -1;
+}
+
+/* La barre a deux étages : les commandes (boutons), puis les menus
+   typographiques — police, taille, couleur, surlignage. Les menus ont besoin
+   d'une largeur que les boutons n'ont pas ; sur une seule ligne, ils
+   réduiraient le texte à une colonne. */
+.app-wysiwyg__commands {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
+}
+
+.app-wysiwyg__typo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem 0.75rem;
+  width: 100%;
+  margin-top: 0.35rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-default-grey);
+}
+
+.app-wysiwyg__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 8.5rem;
+  flex: 1 1 8.5rem;
+  max-width: 12rem;
+}
+
+.app-wysiwyg__field-label {
+  font-size: 0.75rem;
+  line-height: 1.2;
+  color: var(--text-mention-grey);
+}
+
+/* Menu compact : la barre d'outils n'est pas un formulaire, et les libellés
+   portent déjà le sens de chaque valeur. */
+.app-wysiwyg__select {
+  width: 100%;
+  min-height: 2rem;
+  padding: 0.25rem 1.75rem 0.25rem 0.5rem;
+  border: 1px solid var(--border-default-grey);
+  border-radius: 0.25rem;
+  background-color: var(--background-default-grey);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%233a3a3a' d='M12 13.17 7.4 8.59 6 10l6 6 6-6-1.4-1.41z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.4rem center;
+  background-size: 1rem 1rem;
+  color: var(--text-default-grey);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  appearance: none;
+  cursor: pointer;
+}
+
+/* En thème sombre, le chevron doit s'éclairer : une image de fond ne suit pas
+   la couleur du texte, contrairement au reste du contrôle. */
+html[data-fr-theme="dark"] .app-wysiwyg__select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23ffffff' d='M12 13.17 7.4 8.59 6 10l6 6 6-6-1.4-1.41z'/%3E%3C/svg%3E");
+}
+
+.app-wysiwyg__btn {
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: var(--text-default-grey);
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.app-wysiwyg__btn:hover {
+  background: var(--background-default-grey);
+  border-color: var(--border-default-grey);
+}
+
+.app-wysiwyg__btn[aria-pressed="true"] {
+  background: var(--background-alt-blue-france);
+  border-color: var(--border-plain-blue-france);
+  color: var(--text-title-blue-france);
+}
+
+.app-wysiwyg__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.app-wysiwyg__glyph {
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Pictogramme dessiné pour la barre d'outils — le DSFR n'a pas d'icône pour le
+   retrait de première ligne. Il se règle comme une icône du jeu : un carré d'un
+   rem, à la couleur du texte. */
+.app-picto {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+
+/* Dans un bouton DSFR, le pictogramme prend la place d'une icône : il s'en
+   détache d'un demi-mot, comme `fr-mr-1v` le fait pour les icônes du jeu. */
+.fr-btn .app-picto {
+  margin-right: 0.25rem;
+}
+
+.app-wysiwyg__sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 0.15rem 0.35rem;
+  background: var(--border-default-grey);
+}
+
+.app-wysiwyg__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  margin-left: auto;
+  padding-right: 0.25rem;
+}
+
+/* Les commandes se groupent par nature, séparées par un trait. */
+.app-wysiwyg__group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Écriture HTML : le champ de texte remplace la zone mise en forme. Il suit
+   la hauteur de celle-ci, pour que l'écran ne saute pas d'une écriture à
+   l'autre, et se redimensionne à la main. Le sélecteur porte `textarea.fr-input`
+   parce que la feuille du DSFR, chargée depuis un autre domaine, impose aux
+   champs `.fr-input` une hauteur minimale de deux lignes : à spécificité égale
+   avec la seule classe, c'est sa règle qui l'emportait — l'écriture HTML se
+   réduisait à deux lignes, et le balisage d'un document (plusieurs centaines de
+   lignes) y était illisible. */
+textarea.fr-input.app-wysiwyg__source {
+  width: 100%;
+  min-height: 26rem;
+  max-height: 40rem;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  white-space: pre;
+  overflow: auto;
+}
+
+.app-wysiwyg--source .app-wysiwyg__edit {
+  display: none;
+}
+
+/* Repère de saut de page : visible seulement dans l'éditeur. Le document ne
+   contient qu'un élément vide (voir DOCUMENT_CSS dans render.js). */
+.app-wysiwyg__edit .app-page-break {
+  display: block;
+  width: 100%;
+  height: 0;
+  margin: 1rem 0;
+  border-top: 2px dashed var(--border-default-grey);
+  position: relative;
+  cursor: default;
+}
+
+.app-wysiwyg__edit .app-page-break::after {
+  content: "Saut de page";
+  position: absolute;
+  top: -0.7em;
+  left: 0;
+  padding: 0 0.35rem;
+  background: var(--background-default-grey);
+  color: var(--text-mention-grey);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* Tableaux insérés dans le texte : mêmes bordures qu'à l'écran du document. */
+.app-wysiwyg__edit table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 0.75em;
+}
+
+.app-wysiwyg__edit table td,
+.app-wysiwyg__edit table th {
+  border: 1px solid var(--border-default-grey);
+  padding: 0.25rem 0.4rem;
+  vertical-align: top;
+}
+
+.app-wysiwyg__edit table th {
+  background: var(--background-alt-grey);
+  text-align: left;
+}
+
+.app-wysiwyg__edit img {
+  max-width: 100%;
+  height: auto;
+}
+
+.app-wysiwyg__edit blockquote {
+  margin: 0 0 0.75em 1rem;
+  padding-left: 1rem;
+  border-left: 3px solid var(--border-default-grey);
+  color: var(--text-mention-grey);
+}
+
+.app-wysiwyg__edit pre {
+  margin: 0 0 0.75em;
+  padding: 0.5rem 0.75rem;
+  background: var(--background-alt-grey);
+  border-radius: 0.25rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85em;
+  white-space: pre-wrap;
+}
+
+.app-wysiwyg {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 19rem;
+  gap: 1rem;
+  align-items: start;
+}
+
+/* Les enfants d'une grille ont `min-width: auto` : sans cette remise à zéro,
+   la colonne de la palette refuse de descendre sous la largeur minimale de
+   son contenu et déborde de la grille sur écran étroit. */
+.app-wysiwyg > * {
+  min-width: 0;
+}
+
+/* Un écran peut présenter plusieurs zones d'édition (les trois blocs d'un
+   type de trame) : elles s'empilent dans la colonne de gauche. */
+.app-wysiwyg__docs {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.app-wysiwyg__doc {
+  min-width: 0;
+}
+
+.app-wysiwyg__label {
+  font-size: 0.875rem;
+  font-weight: 700;
+  margin: 0 0 0.35rem;
+}
+
+.app-wysiwyg__edit {
+  min-height: 26rem;
+  max-height: 40rem;
+  overflow: auto;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid var(--border-default-grey);
+  border-radius: var(--app-radius);
+  background: var(--background-default-grey);
+  color: var(--text-default-grey);
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  text-align: left;
+  cursor: text;
+}
+
+/* La feuille de style d'un format — ou celle dont une trame hérite : l'en-tête
+   du document, puis le document écrit d'un bout à l'autre. Ce qui entoure
+   l'emplacement du texte est du document, pas de l'interface : le tout reprend
+   donc la mesure de la feuille A4. */
+.app-feuille {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 21cm;
+  margin: 0 auto;
+}
+
+.app-feuille + .app-feuille {
+  margin-top: 1.5rem;
+}
+
+/* Titre de zone : « Feuille de style », « Texte de la trame ». Le second se
+   détache du premier parce qu'il change de nature — la feuille se lit, le
+   texte s'écrit. */
+.app-feuille__titre {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+.app-feuille__etat {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--text-mention-grey);
+}
+
+.app-feuille__etat--adaptee {
+  color: var(--text-title-blue-france);
+  font-weight: 600;
+}
+
+/* Le bandeau de l'en-tête : les logos, montrés et jamais écrits. C'est
+   l'en-tête du document tel qu'il sortira, posé par l'outil au-dessus de la
+   feuille de style (voir `enteteHtml`, render.js). */
+.app-feuille__entete {
+  padding: min(2cm, 7%) min(2cm, 7%) 0;
+  border: 1px solid var(--border-default-grey);
+  border-bottom: 0;
+  background: var(--background-default-grey);
+  overflow: hidden;
+}
+
+.app-feuille__entete img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Le texte de la feuille fait suite à l'en-tête : même cadre, sans le filet
+   qui les séparerait — ce sont les deux moitiés d'une même page. */
+.app-feuille--entete .app-feuille__corps {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+/* Le pied de page répété, dans la feuille de style : il se lit en fin de
+   document, et c'est ce que montre le rendu (voir `piedNumerote`). */
+.app-feuille__corps .print-footer {
+  margin-top: 1.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-default-grey);
+  color: var(--text-mention-grey);
+  font-size: 0.8125rem;
+}
+
+/* L'emplacement du texte de la trame : c'est la charnière du document, il se
+   voit — une ligne à lui, encadrée d'un trait interrompu. */
+.app-feuille__corps .app-token[data-token="{{Corps}}"] {
+  display: block;
+  margin: 1rem 0;
+  padding: 0.5rem 0.75rem;
+  border-style: dashed;
+  text-align: center;
+}
+
+/* La zone d'écriture a la mesure de la feuille : même largeur utile, mêmes
+   marges de 2 cm et même corps (12 pt) que le document rendu — l'aperçu A4
+   reprend exactement cette géométrie (voir `computeDocumentParts`, render.js).
+   Les lignes se coupent donc là où elles se couperont à l'impression, et passer
+   de la rédaction au résultat ne redistribue plus le texte. C'est ce qui rend
+   le résultat lisible : on y retrouve, au mot près, ce qu'on vient d'écrire.
+   L'écran étroit garde la marge relative : la feuille ne doit pas devenir une
+   bande de texte au milieu du vide. */
+.app-doc .app-wysiwyg__edit {
+  width: 100%;
+  max-width: 21cm;
+  margin: 0 auto;
+  padding: min(2cm, 7%);
+  font-size: 12pt;
+  line-height: 1.5;
+}
+
+/* Interligne des paragraphes : celui du document (voir DOCUMENT_CSS), et non
+   l'interligne plus large d'une page web. */
+.app-doc .app-wysiwyg__edit p {
+  margin: 0 0 0.5rem;
+}
+
+/* Zone vierge : le texte d'invite ne doit pas se confondre avec le contenu. */
+.app-wysiwyg__edit:empty::before {
+  content: "Saisir le texte…";
+  color: var(--text-mention-grey);
+  font-style: italic;
+}
+
+/* ------------------------------------------------------------------ */
+/* Le document assemblé dans l'espace de rédaction                     */
+/* ------------------------------------------------------------------ */
+
+/* Le document assemblé se lit d'une **seule feuille** : l'en-tête du service
+   et la feuille de style — chapeau, texte et signature — se suivent sans écart,
+   à la mesure d'une feuille A4. L'en-tête n'est plus un bloc à part : il coiffe
+   la feuille, dont le filet supérieur s'efface (voir `assemblageDocument`,
+   views/documents.js). */
+.app-doc__assemblage {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* L'en-tête du service — le bloc-marque et le logo, posés par l'outil sur
+   toute pièce : il se montre, et ne s'écrit pas (voir `enteteHtml`). Posé sur
+   la feuille, il en prend le filet et le coin, sans le refermer : c'est le
+   haut de la même page. */
+.app-doc__assemblage .app-feuille__entete {
+  width: 100%;
+  max-width: 21cm;
+  margin: 0 auto;
+  padding-bottom: min(1cm, 3.5%);
+  border: 1px solid var(--border-default-grey);
+  border-bottom: 0;
+  border-radius: var(--app-radius) var(--app-radius) 0 0;
+}
+
+.app-doc__assemblage--entete .app-feuille__corps {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+/* Les deux marques invisibles qui disent à l'enregistrement où commence et où
+   finit le texte (voir `decouperAssemblage`, app.js) : elles séparent ce qui
+   appartient à la feuille de ce qui appartient au texte, et ne doivent jamais
+   se voir. Ni hauteur ni largeur : elles ne sont qu'un repère dans le flux. */
+.app-feuille__marque {
+  display: inline;
+  width: 0;
+  height: 0;
+  font-size: 0;
+  line-height: 0;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Le pied de page de la feuille est un rang souple (`display: flex`) : sur un
+   écran étroit, son élément ne peut pas descendre sous la largeur de la
+   pastille qu'il porte — la pastille ne se coupe pas, et une barre de
+   défilement apparaissait pour quelques pixels. Remise à zéro, la largeur
+   minimale laisse la pastille se borner à la zone, comme les autres. */
+.app-wysiwyg__edit .print-footer * { min-width: 0; }
+
+.app-wysiwyg__edit:focus,
+.app-wysiwyg__edit:focus-visible {
+  outline: 2px solid var(--border-plain-blue-france);
+  outline-offset: 2px;
+}
+
+.app-wysiwyg__edit h1,
+.app-wysiwyg__edit h2,
+.app-wysiwyg__edit h3,
+.app-wysiwyg__edit h4 {
+  margin: 1em 0 0.5em;
+}
+
+.app-wysiwyg__edit p {
+  margin: 0 0 0.75em;
+}
+
+.app-wysiwyg__edit ul,
+.app-wysiwyg__edit ol {
+  margin: 0 0 0.75em 1.5rem;
+}
+
+/* Liens et passages soulignés dans la zone d'écriture : la mise du document
+   rendu (voir DOCUMENT_CSS, render.js). Le DSFR souligne un lien par un trait de
+   fond — deux dégradés — et laisse la décoration à « none » : dans la zone
+   d'écriture, ce trait de fond doublait le vrai soulignement, un trait au-dessus
+   et un trait en dessous. La zone d'écriture est du document, pas de
+   l'interface : elle se règle donc comme lui — un seul trait, sous les
+   jambages. */
+.app-wysiwyg__edit a[href] {
+  --underline-img: none;
+  --text-decoration: underline;
+  color: var(--text-action-high-blue-france);
+}
+.app-wysiwyg__edit a,
+.app-wysiwyg__edit u {
+  text-underline-offset: 0.25em;
+  text-decoration-thickness: 1px;
+}
+
+/* Le renvoi extérieur du DSFR — le petit carré qui suit un lien ouvert dans un
+   autre onglet — n'appartient pas au document : un courrier donne une adresse,
+   il ne renvoie pas « ailleurs ». La vue du document l'écarte déjà (voir
+   DOCUMENT_CSS, render.js) ; dans la zone d'écriture, il restait, et le filet
+   qui le borde tombait sous celui du soulignement — deux traits voisins, lus
+   comme un double soulignement. L'éditeur montre le document tel qu'il sera
+   imprimé. */
+.app-wysiwyg__edit a[href][target="_blank"]::after { content: none; }
+
+.app-wysiwyg__edit--drop {
+  outline: 2px dashed var(--border-plain-blue-france);
+  outline-offset: -4px;
+  background: var(--background-alt-blue-france);
+}
+
+/* Le point de dépôt d'une variable. Le curseur natif du navigateur est trop
+   discret pour dire où la variable tombera — et le fantôme du glisser le
+   recouvre. Cette barre le double d'un repère franc, posé au-dessus de tout :
+   haute de la ligne visée, elle se place exactement entre les deux caractères
+   qui encadreront la pastille. Elle est fixée au document et non à la zone
+   rédactionnelle : le texte d'un document est enregistré tel quel, une balise
+   de repère y serait prise pour du contenu. Insensible à la souris, pour ne
+   pas troubler le dépôt ni le survol qu'elle accompagne. */
+.app-drop-caret {
+  position: fixed;
+  z-index: 40;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--blue-france-sun-113-625);
+  box-shadow: 0 0 0 1px var(--background-default-grey);
+  pointer-events: none;
+}
+
+/* Le fantôme du glisser depuis la palette. Sans lui, le navigateur traîne
+   l'image de la barre entière — haute, large — qui masque le point de dépôt
+   pendant tout le geste. On ne traîne qu'une pastille compacte, et sa marge
+   gauche reste transparente : le curseur s'y tient, la balise se dessine à sa
+   droite. Son image est prise ici, hors de l'écran, avant d'être détruite
+   aussitôt après. */
+.app-drag-ghost {
+  position: fixed;
+  top: -1000px;
+  left: -1000px;
+  padding: 0.15rem 0 0.15rem 1.25rem;
+  pointer-events: none;
+}
+
+.app-drag-ghost > span {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.25rem;
+  background: var(--background-alt-blue-france);
+  border: 1px solid var(--border-default-blue-france);
+  color: var(--text-title-blue-france);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.app-wysiwyg--readonly .app-wysiwyg__edit {
+  background: var(--background-contrast-grey);
+  cursor: default;
+}
+
+.app-wysiwyg--readonly .app-palette {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Pastille de variable, dans le texte et dans la palette. */
+.app-token {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  white-space: nowrap;
+  border-radius: 0.25rem;
+  padding: 0.1rem 0.35rem;
+  background: var(--background-alt-blue-france);
+  border: 1px solid var(--border-default-blue-france);
+  color: var(--text-title-blue-france);
+  font-size: 0.9em;
+  cursor: grab;
+  user-select: none;
+}
+
+.app-token--dragging {
+  opacity: 0.4;
+}
+
+.app-token__value--empty {
+  font-style: italic;
+  color: var(--text-mention-grey);
+}
+
+.app-token__code {
+  display: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85em;
+}
+
+.app-wysiwyg--tokens .app-token__value {
+  display: none;
+}
+
+.app-wysiwyg--tokens .app-token__code {
+  display: inline;
+}
+
+/* Palette des variables. */
+.app-palette {
+  border: 1px solid var(--border-default-grey);
+  border-radius: var(--app-radius);
+  background: var(--background-default-grey);
+  display: flex;
+  flex-direction: column;
+  max-height: 34rem;
+}
+
+.app-palette__head {
+  padding: 0.75rem 0.75rem 0.5rem;
+  border-bottom: 1px solid var(--border-default-grey);
+}
+
+.app-palette__head .fr-label {
+  font-size: 0.875rem;
+}
+
+.app-palette__body {
+  overflow: auto;
+  padding: 0.5rem 0.75rem 0.75rem;
+}
+
+.app-palette__group + .app-palette__group {
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--border-default-grey);
+  padding-top: 0.75rem;
+}
+
+.app-palette__title {
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--text-title-blue-france);
+  margin: 0 0 0.35rem;
+}
+
+.app-palette__hint {
+  font-size: 0.75rem;
+  color: var(--text-mention-grey);
+  margin: 0 0 0.4rem;
+}
+
+.app-palette__items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.app-palette__empty {
+  font-size: 0.8125rem;
+  color: var(--text-mention-grey);
+  margin: 0.5rem 0 0;
+}
+
+.app-var {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.15rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border-default-grey);
+  border-radius: 0.25rem;
+  background: var(--background-alt-grey);
+  font-size: 0.8125rem;
+  cursor: grab;
+  text-align: left;
+}
+
+.app-var:hover,
+.app-var:focus-visible {
+  background: var(--background-alt-blue-france);
+  border-color: var(--border-default-blue-france);
+  outline: none;
+}
+
+.app-var--dragging {
+  opacity: 0.5;
+}
+
+.app-var__name {
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+}
+
+.app-var__value {
+  color: var(--text-mention-grey);
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 62em) {
+  .app-wysiwyg {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-palette {
+    max-height: 22rem;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Espace de rédaction d'un document                                   */
+/* ------------------------------------------------------------------ */
+
+/* Le texte tient la largeur ; les outils — paramètres du document,
+   variables — se tiennent à sa droite et se replient pour la lui rendre.
+   `flex-wrap` plutôt qu'une grille : sous la largeur voulue par le texte, les
+   outils passent d'eux-mêmes dessous, sans dépendre de la largeur de la
+   fenêtre — le cadre peut être celui, étroit, d'un outil embarqué. */
+.app-wysiwyg.app-doc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--app-gap);
+  align-items: flex-start;
+}
+
+/* C'est la largeur de l'espace de rédaction — et non celle de la fenêtre — qui
+   décide si les outils tiennent à sa droite : la sous-vue d'un document
+   occupe toute la page, mais le cadre peut être étroit (outil embarqué dans un
+   document Grist). Sous 59rem, les outils passent sous le texte et prennent
+   toute la ligne, plutôt que de réduire le texte à une colonne. */
+.app-wysiwyg.app-doc {
+  container: atelier / inline-size;
+}
+
+/* Le texte et les outils se partagent la largeur **à proportion** : le texte en
+   prend les trois quarts, la colonne d'outils le quart restant — et jamais plus
+   de 22rem, jamais moins de 14rem.
+
+   Le partage est proportionnel, et non fixe, pour que la feuille garde sa
+   **mesure A4** (21 cm) le plus tôt possible : dès que l'espace le permet, les
+   outils se tiennent à 14rem et le texte prend tout le reste, jusqu'à sa
+   mesure ; sur un écran de 1150 px, la feuille est alors entière. Une colonne de
+   largeur fixe (22rem quoi qu'il arrive) étranglait le texte : à 1045 px, la
+   feuille tombait à 585 px — les trois quarts de sa mesure —, et les outils
+   gardaient leur confort. Le partage proportionnel ne change rien au-delà de
+   22rem ni au-dessous de 14rem : c'est un ajustement, pas une refonte. */
+.app-doc__atelier {
+  flex: 3 1 0;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.app-doc__outils {
+  flex: 1 1 0;
+  min-width: 14rem;
+  max-width: 22rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  /* Colonne d'outils : elle reste en vue pendant qu'on écrit et défile pour
+     elle-même, sans entraîner le texte. Comme les autres barres collées de la
+     page, elle s'adosse à la barre de navigation. */
+  position: sticky;
+  top: calc(var(--app-navbar-h, 3.75rem) + 0.75rem);
+  max-height: calc(100vh - 6rem);
+  overflow: auto;
+  padding-right: 0.25rem;
+}
+
+/* Sous cette largeur, les outils passent **sous** le texte et prennent toute la
+   ligne : mieux vaut un texte large et des outils dessous qu'un texte réduit à
+   une colonne pour tenir une colonne d'outils à côté de lui. Le plafond tombe
+   avec eux — sans quoi la demande « toute la ligne » resterait bornée à 22rem,
+   et les deux colonnes tiendraient côte à côte malgré tout. Le sélecteur à deux
+   classes l'emporte sur le plafond propre à l'atelier d'une décision. */
+@container atelier (max-width: 59rem) {
+  .app-wysiwyg.app-doc .app-doc__outils {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+  /* Repliés, les outils restent la barre qui rend sa largeur au texte : la
+     demande « toute la ligne » ne les concerne pas. */
+  .app-wysiwyg.app-doc .app-doc__outils--replie {
+    flex: 0 0 2.6rem;
+    min-width: 0;
+  }
+}
+
+/* La colonne d'outils est un **conteneur de requête** à son tour. Les panneaux
+   d'outils sont pleins des grilles de champs du DSFR, et ces grilles se coupent
+   sur la largeur de la **fenêtre**, non sur celle dont elles disposent : dans
+   une colonne de 15rem, deux champs côte à côte n'en gardent que sept chacun,
+   et le champ de date n'y montre plus que deux caractères de sa valeur. Sous
+   20rem de colonne, les champs reprennent donc la largeur entière — la mise en
+   page du mobile, appliquée à la colonne et non à l'écran. */
+.app-doc__outils {
+  container: outils / inline-size;
+}
+
+@container outils (max-width: 20rem) {
+  [class*="fr-col-md-"] {
+    flex: 0 0 100%;
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+/* Les deux outils repliés : la colonne se réduit à ses deux onglets. Le
+   plancher de largeur tombe avec elle — sans quoi le minimum de la colonne
+   ouverte l'empêcherait de se replier, et l'atelier d'une décision, dont le
+   plancher est plus haut, resterait large même replié. Le sélecteur nomme la
+   racine de l'espace de rédaction pour l'emporter sur ces planchers. */
+.app-wysiwyg.app-doc .app-doc__outils--replie {
+  flex: 0 0 2.6rem;
+  min-width: 0;
+}
+
+/* Les panneaux gardent leur hauteur : c'est la colonne qui défile. Sans cela,
+   ils se compriment pour tenir dans la hauteur maximale, et leur contenu
+   disparaît sous leur propre débordement. */
+.app-doc__outils > * {
+  flex: none;
+}
+
+/* Chaque outil borne son propre corps : le formulaire des paramètres et la
+   liste des variables défilent dans leur panneau, et tous deux restent en vue
+   à droite du texte. La colonne ne défile donc qu'en secours, sur un écran
+   trop court pour les accueillir. */
+.app-outils {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-doc__outils .app-outils--parametres .fr-panel__body {
+  overflow: auto;
+  max-height: min(52vh, 30rem);
+}
+
+.app-doc__outils .app-outils--variables .fr-panel__body {
+  display: flex;
+  flex-direction: column;
+  max-height: min(42vh, 22rem);
+}
+
+/* Un seul outil ouvert : il prend la hauteur laissée libre. */
+.app-doc__outils > .app-outils:only-of-type .fr-panel__body {
+  max-height: min(78vh, 46rem);
+}
+
+/* Nombre de pages de l'aperçu, annoncé par l'aperçu lui-même (voir
+   brancherPagination, dans app.js). Il prolonge la phrase qui le précède :
+   « Aperçu avant impression — 2 pages ». */
+.app-doc-pages {
+  font-weight: 500;
+  color: var(--text-title-blue-france);
+}
+
+/* Le rendu est une vue de l'espace de rédaction, non une section de la page :
+   il ne paraît qu'en choisissant cette vue, et la feuille y prend alors toute
+   la largeur — c'est un aperçu avant impression, rien d'autre ne doit le
+   disputer. Les outils se règlent dans la vue « Rédaction », à un clic d'ici. */
+.app-doc__rendu {
+  display: none;
+}
+
+/* Bandeau du rendu : ce que l'on regarde (un aperçu avant impression, et son
+   nombre de pages), et le chemin pour revenir au texte. Un aperçu ne se modifie
+   pas : on y lit, et l'on repart rédiger. */
+.app-doc__rendu-tete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.app-doc--resultat .app-doc__rendu {
+  display: block;
+}
+
+.app-doc--resultat .app-wysiwyg__toolbar,
+.app-doc--resultat .app-wysiwyg__docs,
+.app-doc--resultat .app-doc__outils {
+  display: none;
+}
+
+/* En écriture HTML, la barre d'outils n'a rien à commander : on écrit les
+   balises à la main, et la palette les insère au curseur. */
+.app-doc--balisage .app-wysiwyg__toolbar {
+  display: none;
+}
+
+/* Outil repliable : un panneau ouvert, un onglet vertical replié. */
+.app-outils {
+  margin-bottom: 0;
+}
+
+.app-outils__tete {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--border-default-grey);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  justify-content: space-between;
+}
+
+.app-outils__tete:hover {
+  background: var(--background-contrast-blue-france);
+}
+
+.app-outils__chevron {
+  flex: none;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-right: 2px solid var(--text-title-blue-france);
+  border-bottom: 2px solid var(--text-title-blue-france);
+  transform: rotate(-135deg);
+}
+
+.app-outils--replie {
+  appearance: none;
+  width: 2.6rem;
+  padding: 0.6rem 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--border-default-grey);
+  border-radius: var(--app-radius);
+  background: var(--background-default-grey);
+  box-shadow: var(--app-shadow);
+  color: var(--text-title-blue-france);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.app-outils--replie:hover {
+  background: var(--background-alt-blue-france);
+}
+
+.app-outils__libelle {
+  writing-mode: vertical-rl;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+/* La palette sert ici de contenu au panneau « Variables » : elle perd son
+   cadre, et c'est le panneau qui borne sa hauteur — la palette remplit alors
+   le panneau et défile en son corps, sans étirer la page de ses centaines de
+   variables. */
+.app-outils .app-palette {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  border: 0;
+  background: transparent;
+}
+
+.app-outils .app-palette__head,
+.app-outils .app-palette__body {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.app-outils .app-palette__head {
+  padding-top: 0;
+}
+
+.app-outils .app-palette__body {
+  padding-bottom: 0;
+}
+
+/* Écran étroit : les outils passent sous l'espace de rédaction et prennent
+   toute la largeur. Ils cessent alors d'être une colonne collante à hauteur
+   bornée — la page défile d'elle-même, et rien n'est enfermé dans une zone de
+   défilement au milieu d'un écran de téléphone. */
+@media (max-width: 62em) {
+  .app-wysiwyg.app-doc .app-doc__outils {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+    flex: 1 1 100%;
+    max-width: none;
+  }
+  .app-wysiwyg.app-doc .app-doc__outils--replie {
+    flex: 0 0 2.6rem;
+    min-width: 0;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Texte et dictionnaire                                               */
+/* ------------------------------------------------------------------ */
+
+.app-prose {
+  max-width: 78ch;
+}
+
+.app-prose h2 {
+  font-size: 1.35rem;
+  margin: 1.5rem 0 0.6rem;
+}
+
+.app-prose h3 {
+  font-size: 1.15rem;
+  margin: 1.25rem 0 0.5rem;
+}
+
+.app-prose h4 {
+  font-size: 1rem;
+  margin: 1rem 0 0.4rem;
+}
+
+.app-prose p,
+.app-prose li {
+  font-size: 0.9375rem;
+  line-height: 1.65;
+}
+
+.app-prose code,
+.app-dictionary code,
+.app-prose kbd {
+  background: var(--background-contrast-grey);
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+}
+
+.app-dictionary {
+  max-height: 32rem;
+  overflow: auto;
+  border: 1px solid var(--border-default-grey);
+  border-radius: var(--app-radius);
+  padding: 1rem;
+}
+
+/* Liste de balises disponibles (types de trames). */
+.app-accordion {
+  border: 1px solid var(--border-default-grey);
+  border-radius: var(--app-radius);
+  margin-bottom: 0.5rem;
+  background: var(--background-default-grey);
+}
+
+.app-accordion > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 0.8rem 1rem;
+  font-weight: 700;
+  color: var(--text-title-blue-france);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.app-accordion > summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-accordion > summary::after {
+  content: "";
+  width: 0.55rem;
+  height: 0.55rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.2s;
+}
+
+.app-accordion[open] > summary::after {
+  transform: rotate(-135deg);
+}
+
+.app-accordion__body {
+  padding: 0 1rem 1rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Graphiques                                                          */
+/* ------------------------------------------------------------------ */
+
+.app-chart {
+  margin: 0;
+}
+
+.app-chart figcaption {
+  margin-bottom: 1rem;
+  font-weight: 700;
+  color: var(--text-title-blue-france);
+}
+
+.app-chart__row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.app-chart__label {
+  flex: 0 0 42%;
+  font-size: 0.8125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-chart__bar {
+  flex: 1 1 auto;
+  height: 0.9rem;
+  background: var(--background-contrast-grey);
+  border-radius: 0.45rem;
+  overflow: hidden;
+}
+
+.app-chart__bar > span {
+  display: block;
+  height: 100%;
+  background: var(--background-action-high-blue-france);
+  border-radius: 0.45rem;
+}
+
+.app-chart__value {
+  flex: 0 0 2.5rem;
+  text-align: right;
+  font-weight: 700;
+  font-size: 0.8125rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* États vides                                                         */
+/* ------------------------------------------------------------------ */
+
+.app-empty {
+  text-align: center;
+  padding: 1.75rem 1rem;
+  color: var(--text-mention-grey);
+}
+
+.app-empty__icon {
+  --icon-size: 2rem;
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  color: var(--text-mention-grey);
+}
+
+.app-empty__text {
+  margin: 0 0 0.75rem;
+  font-size: 0.9375rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Fenêtre modale                                                      */
+/* ------------------------------------------------------------------ */
+
+.app-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 18, 0.55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 4vh 1rem;
+  overflow: auto;
+}
+
+.app-dialog {
+  background: var(--background-default-grey);
+  border-radius: var(--app-radius);
+  box-shadow: var(--app-shadow-lg);
+  width: 100%;
+  max-width: 40rem;
+  margin: auto;
+  /* Les formulaires de création sont longs (une quinzaine de champs) : sans
+     plafond, la fenêtre dépassait la hauteur de l'écran — jusqu'à 1 300 px, et
+     le bouton d'enregistrement se trouvait alors 400 px sous le bas de la
+     fenêtre, invisible au moment de valider. On plafonne la fenêtre à l'espace
+     offert par le fond (qui réserve 4vh en haut et en bas) et c'est le corps
+     qui défile, l'en-tête et le pied restant en place. */
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 8vh);
+}
+
+.app-dialog__body {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.app-dialog--lg {
+  max-width: 58rem;
+}
+
+.app-dialog--sm {
+  max-width: 26rem;
+}
+
+.app-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.15rem 1.25rem;
+  border-bottom: 1px solid var(--border-default-grey);
+}
+
+.app-dialog__body {
+  padding: 1.25rem;
+}
+
+.app-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--border-default-grey);
+  background: var(--background-alt-grey);
+  border-radius: 0 0 var(--app-radius) var(--app-radius);
+}
+
+/* Étapes du formulaire de création */
+.app-stepper {
+  display: flex;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  flex-wrap: wrap;
+}
+
+.app-stepper__item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.8125rem;
+  color: var(--text-mention-grey);
+  flex: 1 1 8rem;
+}
+
+.app-stepper__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: var(--background-contrast-grey);
+  font-weight: 700;
+  flex: none;
+}
+
+.app-stepper__item.is-current {
+  color: var(--text-title-blue-france);
+  font-weight: 700;
+}
+
+.app-stepper__item.is-current .app-stepper__num {
+  background: var(--background-action-high-blue-france);
+  color: var(--text-inverted-blue-france);
+}
+
+.app-stepper__item.is-done .app-stepper__num {
+  background: var(--background-action-low-green-emeraude);
+  color: var(--text-default-success);
+}
+
+/* ------------------------------------------------------------------ */
+/* Notifications                                                       */
+/* ------------------------------------------------------------------ */
+
+.app-toasts {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 1200;
+  max-width: 22rem;
+}
+
+.app-toast {
+  margin-bottom: 0.5rem;
+  box-shadow: var(--app-shadow-lg);
+}
+
+/* ------------------------------------------------------------------ */
+/* Divers                                                              */
+/* ------------------------------------------------------------------ */
+
+.app-ref {
+  font-weight: 700;
+  color: var(--text-title-blue-france);
+  white-space: nowrap;
+}
+
+.app-muted {
+  color: var(--text-mention-grey);
+}
+
+.app-nowrap {
+  white-space: nowrap;
+}
+
+/* Un bouton réduit à son icône (`.app-btn--icone`) ne porte pas le repère
+   « lien externe » que le DSFR ajoute après tout `[target=_blank]` : l'icône
+   dit déjà ce que fait le bouton, et ce repère — seize pixels — élargissait la
+   colonne d'actions du rôle d'une séance au point d'en faire sortir le bouton
+   voisin (voir `boutonOuvrirLeDossier`, seances.js). */
+.app-btn--icone[target="_blank"]::after {
+  content: none;
+}
+
+/* Cellule de tableau tronquée : évite qu'une longue énumération élargisse
+   la table au-delà de la fenêtre (le contenu complet reste dans le title). */
+.app-clip {
+  max-width: 18rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Cellule qui doit se replier plutôt que d'élargir sa colonne : un nom
+   d'utilisateur, un identifiant, une chaîne sans espace. */
+.app-break {
+  overflow-wrap: anywhere;
+}
+
+/* Tableau à colonnes figées : garantit que le tableau tient dans son panneau
+   quelle que soit la longueur des données (pas de défilement horizontal). */
+.app-table--fixed table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.app-table--fixed th,
+.app-table--fixed td {
+  overflow: hidden;
+  /* Une cellule tronquée (date, énumération) doit le dire : sans cela, le
+     texte s'arrête net au bord de la cellule, sans le moindre repère. */
+  text-overflow: ellipsis;
+}
+
+/* Cellule d'action : son contenu est un bouton, pas du texte — un « … » se
+   dessinerait par-dessus l'icône. La colonne est dimensionnée pour le bouton
+   (voir `cols`), donc rien n'est réellement tronqué : le rembourrage latéral
+   est réduit et le bouton centré, pour que la colonne reste étroite et laisse
+   la place aux colonnes de données. */
+.app-table--fixed td.app-cell-action {
+  padding-left: 0;
+  padding-right: 0.5rem;
+  text-align: center;
+  text-overflow: clip;
+}
+
+/* Un en-tête est un libellé, pas une donnée : faute de place, il se replie sur
+   deux lignes au lieu d'être coupé au milieu d'un mot (« Commission de
+   discipli… »). Les colonnes gardent ainsi toute leur largeur pour les
+   données. */
+.app-table--fixed th {
+  white-space: normal;
+}
+
+.app-table--fixed .app-clip {
+  max-width: 100%;
+}
+
+/* Sur écran étroit, une table à colonnes figées n'a plus de place : les
+   colonnes se réduisent à quelques pixels et les en-têtes se coupent au milieu
+   d'un mot. On rend la main au navigateur (colonnes ajustées au contenu) ; le
+   tableau dépasse alors son cadre et c'est le conteneur du DSFR, déjà
+   défilable, qui prend le relais — un tableau qui défile se lit, un tableau
+   écrasé ne se lit pas. */
+@media (max-width: 48em) {
+  .app-table--fixed table {
+    table-layout: auto;
+  }
+
+  .app-table--fixed th,
+  .app-table--fixed td {
+    overflow: visible;
+  }
+}
+
+/* Le DSFR interdit le retour à la ligne dans les cellules (`white-space:
+   nowrap`) : parfait pour un tableau de données, désastreux pour un tableau de
+   lecture, où les cellules contiennent des phrases. Les colonnes figées
+   tronqueraient alors le texte au lieu de le replier — ces tableaux-ci
+   (contrôles de régularité, rapports d'import) autorisent donc le retour à la
+   ligne. La largeur des colonnes, elle, se règle par `cols` (voir `dataTable`)
+   et non par une règle CSS : en mode « colonnes figées », le navigateur ne
+   retient que les largeurs d'un `<colgroup>`. */
+.app-table--wrap th,
+.app-table--wrap td {
+  white-space: normal;
+}
+
+/* Tableau d'attribution : sept colonnes, dont une liste déroulante et des
+   dates en toutes lettres. Sous cette largeur, les colonnes deviendraient
+   illisibles — le tableau défile alors dans son conteneur (comportement du
+   registre des décisions) au lieu de s'écraser. */
+.app-table--attribution table {
+  min-width: 53rem;
+}
+
+.app-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.app-row--between {
+  justify-content: space-between;
+}
+
+/* Journal de diagnostic (Réglages › Données) : texte monospacé, défilable,
+   pour être lu et copié tel quel jusque dans un message. */
+.app-diag-log {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  white-space: pre;
+  overflow: auto;
+}
+
+.app-stack > * + * {
+  margin-top: 1rem;
+}
+
+.app-mt-2 {
+  margin-top: 1rem;
+}
+
+.app-hidden {
+  display: none !important;
+}
+
+/* ------------------------------------------------------------------ */
+/* Compléments de mise en page                                         */
+/* ------------------------------------------------------------------ */
+
+/* Liste maîtresse : la colonne de gauche garde sa propre barre de défilement. */
+.app-master .fr-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.app-master .app-list {
+  max-height: 62vh;
+  overflow-y: auto;
+}
+
+/* Cheminement d'état : bandeau d'avancement + clôtures. */
+.app-flow-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.app-flow-wrap .app-flow {
+  margin-bottom: 0;
+}
+
+.app-flow__extra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* Mot d'explication sous le cheminement (voie de l'article R.811-40). */
+.app-flow__note {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Bandeau de filtres pleine largeur. */
+.app-filters--page {
+  background: var(--background-default-grey);
+  border: 1px solid var(--border-default-grey);
+  border-radius: var(--app-radius);
+  padding: 1rem 1rem 0.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.app-check--inline {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 0.75rem;
+}
+
+.app-check--inline .fr-label {
+  margin-bottom: 0;
+}
+
+/* Case à cocher d'une ligne de liste (registre des trames) : centrée sur la
+   carte qu'elle précède, et sans la marge basse que DSFR réserve sous un
+   groupe de cases. */
+.app-check--lot {
+  align-self: center;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+/* Barre de lot de la vue « Attribution » : nombre d'affaires cochées, cible
+   du lot et gestes groupés. Elle n'apparaît qu'une fois une case cochée. */
+.app-lot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--background-alt-blue-france);
+  border: 1px solid var(--border-default-blue-france);
+  border-radius: var(--app-radius);
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.app-lot__compte {
+  margin-right: auto;
+  font-weight: 500;
+  color: var(--text-label-blue-france);
+}
+
+.app-lot__cible {
+  flex: 0 1 20rem;
+  min-width: 12rem;
+}
+
+.app-lot__cible .fr-select {
+  margin-bottom: 0;
+}
+
+/* Bouton qui se lit comme un lien : lignes cliquables du récapitulatif
+   d'attribution (DSFR ne prévoit pas de bouton-lien dans un tableau). */
+.app-linkish {
+  padding: 0;
+  text-align: left;
+  background-image: none;
+}
+
+/* Étapes de prise en main. */
+.app-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.75rem;
+}
+
+.app-steps__link {
+  display: block;
+  height: 100%;
+  background: var(--background-default-grey);
+  border: 1px solid var(--border-default-grey);
+  border-radius: var(--app-radius);
+  padding: 0.9rem 1rem;
+  text-decoration: none;
+  background-image: none;
+  color: var(--text-default-grey);
+}
+
+.app-steps__link:hover,
+.app-steps__link:focus {
+  background: var(--background-alt-blue-france);
+}
+
+.app-steps__title {
+  display: block;
+  font-weight: 700;
+  color: var(--text-title-blue-france);
+  margin-bottom: 0.35rem;
+}
+
+.app-steps__text {
+  display: block;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+/* Plafond des panneaux pour les formulaires courts. */
+.app-dialog .app-form-grid {
+  margin-bottom: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Intégration en widget Grist (cadre de faible hauteur)               */
+/* ------------------------------------------------------------------ */
+
+.app-embedded .fr-footer {
+  display: none;
+}
+
+.app-embedded .fr-header__service-tagline {
+  display: none;
+}
+
+.app-embedded .fr-header__body-row {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.app-embedded .app-main {
+  padding-top: 1rem;
+}
+
+/* Dans un cadre Grist, la barre **reste collée** : le cadre est court, mais
+   c'est lui qui défile — la barre y est le seul repère fixe, et les commandes
+   du compte y descendent comme dans un onglet (`entete-defilant.js`). Le cadre
+   défilant pour lui-même, `position: sticky` s'y accroche normalement ; il n'y
+   a rien à neutraliser. La barre est seulement **plus mince** : un widget n'a
+   pas la hauteur d'un onglet, et chaque pixel de la barre est pris sur le
+   contenu — ses entrées se resserrent donc d'un cran, sans changer de taille
+   de texte. */
+.app-embedded .app-navbar__link {
+  padding-top: 0.55rem;
+  padding-bottom: 0.55rem;
+}
+
+.app-embedded .app-navbar__mobile > summary {
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+}
+
+.app-embedded .app-split__aside {
+  position: static;
+  max-height: none;
+}
+
+.app-embedded .app-doc-preview iframe {
+  height: 36rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Onglet Debug                                                        */
+/* ------------------------------------------------------------------ */
+
+.app-debug-roles {
+  gap: 0.5rem;
+}
+
+/* Les deux champs de l'onglet Debug (nom affiché, identité simulée) sont posés
+   à même le panneau, sans colonne qui les retienne : dans une coquille large,
+   ils s'étireraient sur toute la page. Ils gardent donc la largeur d'un champ
+   de formulaire, celle qu'ont les champs des Réglages. */
+.app-debug__champs .fr-input,
+.app-debug__champs .fr-select {
+  max-width: 32rem;
+}
+
+.app-debug-role[aria-pressed="true"] {
+  pointer-events: none;
+}
+
+.app-debug code {
+  word-break: break-all;
+}
+
+/* ------------------------------------------------------------------ */
+/* Calendrier des échéances                                            */
+/* ------------------------------------------------------------------ */
+
+.app-cal__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.app-cal__titre {
+  flex: 1;
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  text-align: center;
+}
+
+.app-cal table {
+  table-layout: fixed;
+}
+
+.app-cal th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.app-cal__jour {
+  height: 6.5rem;
+  padding: 0.25rem !important;
+  vertical-align: top;
+  font-size: 0.75rem;
+}
+
+.app-cal__jour--hors {
+  background: var(--background-alt-grey);
+}
+
+.app-cal__jour--hors .app-cal__num {
+  opacity: 0.45;
+}
+
+.app-cal__jour--aujourdhui .app-cal__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--background-action-high-blue-france);
+  color: var(--text-inverted-blue-france);
+  font-weight: 700;
+}
+
+.app-cal__jour--choisi {
+  outline: 2px solid var(--border-action-high-blue-france);
+  outline-offset: -2px;
+}
+
+.app-cal__jour[data-action] {
+  cursor: pointer;
+}
+
+.app-cal__num {
+  display: block;
+  margin-bottom: 0.125rem;
+  line-height: 1.4;
+}
+
+.app-cal__evts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.app-cal__evt {
+  display: block;
+  /* Le DSFR interdit le retour à la ligne dans les cellules, et `white-space`
+     s'hérite : sans cette remise à zéro, un libellé d'échéance serait tronqué
+     au lieu de se replier sur la deuxième ligne. */
+  white-space: normal;
+  overflow: hidden;
+  padding: 0.0625rem 0.25rem;
+  border-radius: 2px;
+  font-size: 0.6875rem;
+  line-height: 1.25;
+  background: var(--background-alt-blue-france);
+  color: var(--text-default-grey);
+}
+
+.app-cal__evt--seance {
+  background: var(--background-action-high-blue-france);
+  color: var(--text-inverted-blue-france);
+  font-weight: 700;
+}
+
+/* Les couleurs suivent l'appariement prévu par le DSFR — un aplat
+   (`background-flat-*`) et son texte inversé (`text-inverted-*`) — et non un
+   fond sombre avec un texte sombre : les deux se lisent alors dans le thème
+   clair comme dans le thème sombre, où le DSFR inverse la paire. */
+.app-cal__evt--delai {
+  background: var(--background-flat-warning);
+  color: var(--text-inverted-warning);
+}
+
+.app-cal__evt--sanction {
+  background: var(--background-flat-error);
+  color: var(--text-inverted-error);
+}
+
+.app-cal__evt--convocation {
+  background: var(--background-flat-success);
+  color: var(--text-inverted-success);
+}
+
+.app-cal__heure {
+  margin-right: 0.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-cal__plus {
+  display: block;
+  padding-left: 0.25rem;
+  color: var(--text-mention-grey);
+}
+
+/* Les repères du calendrier : le ton d'une pastille, ce qu'il annonce, et le
+   nombre d'échéances du mois. Une ligne par catégorie présente dans le mois —
+   la même pastille que la grille, pour que le rapprochement soit immédiat. */
+.app-reperes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.app-reperes li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.app-reperes .app-cal__evt {
+  font-size: 0.75rem;
+}
+
+.app-reperes__n {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-title-blue-france);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------ */
+/* Rapport d'activité                                                  */
+/* ------------------------------------------------------------------ */
+
+/* Les graphiques d'un rapport sont des images : elles prennent la largeur de
+   leur carte, quelle que soit la taille du dessin d'origine. */
+.app-graphique {
+  margin: 0;
+}
+
+.app-graphique figcaption {
+  font-size: 0.8125rem;
+  color: var(--text-mention-grey);
+  margin-bottom: 0.35rem;
+}
+
+.app-graphique__image {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Carte d'un graphique : le titre et le bouton PNG dans l'en-tête, l'image
+   dans le corps. Le bouton est plus haut que la ligne du titre (2rem contre
+   1,5rem) : on les centre l'un sur l'autre plutôt que de les aligner par le
+   haut, sinon le bouton pend sous le titre. */
+.app-rapport__graphique .fr-panel__header {
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.app-rapport__graphique-titre {
+  flex: 1 1 auto;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: var(--text-title-grey);
+}
+
+/* Graphique **à plat** : sans carte autour, posé dans une grille de deux
+   colonnes à l'intérieur du rapport. Le rapport avait dix-huit panneaux
+   imbriqués — chaque graphique et chaque tableau étant lui-même une carte :
+   une seule couche de cadre suffit. */
+.app-rapport__graphique {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--border-default-grey);
+  border-radius: var(--app-radius);
+  background: var(--background-default-grey);
+}
+
+.app-rapport__grille {
+  display: grid;
+  /* `min(22rem, 100%)` : sous 22 rem, la piste ne dépasse jamais la largeur
+     disponible — sans quoi elle imposait 352 px et débordait à 320 px, comme la
+     grille des espaces de travail (voir `.app-deux-colonnes`, NC-0013). */
+  grid-template-columns: repeat(auto-fill, minmax(min(22rem, 100%), 1fr));
+  gap: 1rem;
+}
+
+/* Tableau d'indicateurs dans le rapport : un titre, le tableau, et son export
+   — discret tant qu'on ne le cherche pas, pour que la page se lise. */
+.app-rapport__tableau + .app-rapport__tableau {
+  margin-top: 1.5rem;
+}
+
+.app-rapport__tableau-tete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.35rem;
+}
+
+.app-rapport__tableau-export {
+  opacity: 0.35;
+  transition: opacity 0.15s;
+}
+
+.app-rapport__tableau:hover .app-rapport__tableau-export,
+.app-rapport__tableau:focus-within .app-rapport__tableau-export {
+  opacity: 1;
+}
+
+/* Barre d'ancres d'une page longue : un sommaire qui reste sous l'œil pendant
+   qu'on déroule. Chaque entrée est un bouton : il fait sauter à une section,
+   ou il choisit la vue (graphiques ou tableaux). */
+.app-anchors {
+  position: sticky;
+  /* Le sommaire se colle **sous** la barre de navigation, dont la hauteur est
+     publiée par `entete-defilant.js`. Une valeur fixe (`top: 0`) le posait
+     par-dessus : sur une page longue, la barre de navigation disparaissait sous
+     le sommaire dès qu'on défilait. La mesure de repli (3,75 rem) est la
+     hauteur d'une barre sur un seul rang : sans le script, le sommaire ne se
+     met au moins pas devant les onglets. */
+  top: var(--app-navbar-h, 3.75rem);
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 1.25rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--background-default-grey);
+  border: 1px solid var(--border-default-grey);
+  border-radius: var(--app-radius);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.app-anchors__link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid transparent;
+  border-radius: 2rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  text-decoration: none;
+  background: none;
+  background-image: none;
+  color: var(--text-default-grey);
+  cursor: pointer;
+}
+
+.app-anchors__link:hover {
+  background: var(--background-alt-blue-france);
+  color: var(--text-title-blue-france);
+}
+
+.app-anchors__link[aria-current="true"] {
+  background: var(--background-alt-blue-france);
+  border-color: var(--border-plain-blue-france);
+  color: var(--text-title-blue-france);
+  font-weight: 700;
+}
+
+/* Tableau d'indicateurs : la première colonne porte le libellé, les autres les
+   chiffres — alignés à droite, pour que les ordres de grandeur se comparent
+   d'une ligne à l'autre. */
+.app-table--indicateurs table {
+  font-variant-numeric: tabular-nums;
+}
+
+.app-table--indicateurs th.app-table__num,
+.app-table--indicateurs td.app-table__num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ */
+/* Atelier de rédaction d'une décision                                 */
+/* ------------------------------------------------------------------ */
+
+/* L'atelier d'une décision réunit plus d'outils que celui d'un document : le
+   répertoire des considérants y tient la colonne, qui prend donc un peu plus de
+   largeur — plancher plus haut (18rem au lieu de 14rem), plafond plus haut
+   (25rem au lieu de 22rem). Elle reste **proportionnelle**, comme l'autre : un
+   plafond fixe à 25rem quoi qu'il arrive rendait au texte, sur un écran de
+   1045 px, moins de place que dans tous les autres ateliers — au détriment du
+   texte, qui est pourtant ce qu'on vient écrire là. */
+.app-doc--decision .app-doc__outils {
+  flex: 1 1 0;
+  min-width: 18rem;
+  max-width: 25rem;
+}
+
+/* Les considérants d'une décision portent la marque `considere` : elle vaut
+   dans le document rendu (voir DOCUMENT_CSS, render.js) comme dans la zone
+   d'écriture, où le rédacteur doit voir la même mise en forme — justifiée —
+   que celle du tirage. L'intertitre, lui, annonce un groupe et se détache. */
+.app-wysiwyg__edit .considere {
+  text-align: justify;
+}
+
+.app-wysiwyg__edit .considere-src {
+  text-align: justify;
+  font-size: 0.9em;
+  color: var(--text-mention-grey);
+}
+
+.app-wysiwyg__edit .considere-intertitre {
+  font-weight: 700;
+  margin: 1rem 0 0.4rem;
+}
+
+/* Le répertoire des considérants : ses filtres tiennent en tête du panneau, sa
+   liste défile en dessous. Le panneau a une hauteur écrite — et non une hauteur
+   maximale —, afin que la liste prenne la place qui reste au lieu d'être
+   comprimée par les filtres : c'est elle qu'on est venu consulter. */
+.app-doc__outils .app-outils--considerants .fr-panel__body {
+  display: flex;
+  flex-direction: column;
+  height: min(80vh, 52rem);
+  min-height: 0;
+}
+
+.app-considerants__filtres .app-search {
+  margin-bottom: 0.5rem;
+}
+
+/* Les deux filtres de vocabulaire tiennent côte à côte : dans la colonne
+   étroite des outils, deux menus valent mieux qu'un empilement qui mange la
+   place du répertoire. Leurs libellés sont lus par les lecteurs d'écran et
+   rappelés par l'infobulle. */
+.app-considerants__selects {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.app-considerants__selects > .fr-select-group {
+  flex: 1 1 0;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+/* Les tags du filtre tiennent sur une seule ligne, qui défile : ils sont
+   nombreux, et les empiler mangerait toute la place du répertoire. */
+.app-considerants__tags {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 0.25rem;
+  padding-bottom: 0.2rem;
+  margin-top: 0.75rem;
+}
+
+.app-considerants__tag {
+  flex: none;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.app-considerants__compte {
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-considerants__liste {
+  flex: 1 1 auto;
+  min-height: 8rem;
+  overflow: auto;
+  margin-top: 0.5rem;
+  padding-right: 0.25rem;
+}
+
+.app-considerants__groupe + .app-considerants__groupe {
+  margin-top: 1rem;
+}
+
+.app-considerants__groupe-titre {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0 0 0.4rem;
+  padding-bottom: 0.2rem;
+  border-bottom: 1px solid var(--border-default-grey);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--text-title-blue-france);
+  text-transform: none;
+}
+
+/* Une carte de considérant : glissable, elle porte sa nature, son titre, ses
+   premiers mots et ses tags. Le curseur dit qu'elle se prend en main. */
+.app-considere {
+  padding: 0.5rem 0.55rem;
+  border: 1px solid var(--border-default-grey);
+  border-left: 3px solid var(--border-plain-blue-france);
+  border-radius: var(--app-radius);
+  background: var(--background-default-grey);
+  text-align: left;
+  cursor: grab;
+}
+
+.app-considere + .app-considere {
+  margin-top: 0.4rem;
+}
+
+.app-considere:hover {
+  border-color: var(--border-plain-blue-france);
+  box-shadow: var(--app-shadow);
+}
+
+.app-considere:active {
+  cursor: grabbing;
+}
+
+.app-considere__tete {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.app-considere__rubrique {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.75rem;
+  color: var(--text-mention-grey);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.app-considere__rubrique:hover {
+  color: var(--text-action-high-blue-france);
+}
+
+.app-considere__titre {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-title-grey);
+}
+
+.app-considere__texte {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0.15rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--text-default-grey);
+}
+
+.app-considere__source {
+  display: flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  margin: 0.3rem 0 0;
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--text-mention-grey);
+}
+
+.app-considere__source-texte {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.app-considere__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  margin: 0.4rem 0 0;
+}
+
+.app-considere__pied {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.app-considere__usage {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-mention-grey);
+}
+
+/* Les formules (visas, audience, dispositif) : chaque groupe se déplie, et ses
+   formules s'empilent en boutons pleine largeur — un intitulé long se lit mieux
+   ainsi qu'en pastille. Celles qui ne conviennent pas à la décision en cours
+   restent visibles, mais en gris. */
+.app-formules + .app-formules {
+  margin-top: 0.75rem;
+}
+
+.app-formules__titre {
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-title-blue-france);
+  cursor: pointer;
+}
+
+.app-formules__liste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.app-formule {
+  appearance: none;
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border-default-grey);
+  border-radius: var(--app-radius);
+  background: var(--background-default-grey);
+  color: var(--text-default-grey);
+  font: inherit;
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.app-formule:hover {
+  border-color: var(--border-plain-blue-france);
+  background: var(--background-alt-blue-france);
+}
+
+.app-formule--hors {
+  color: var(--text-mention-grey);
+  border-style: dashed;
+  opacity: 0.75;
+}
+
+/* Liste simple de la colonne d'outils (composition de la formation). */
+.app-liste-simple {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.875rem;
+  text-align: left;
+}
+
+.app-liste-simple li {
+  margin-bottom: 0.3rem;
+}
+
+/* L'atelier d'une décision a plus d'outils que celui d'un document : chacun
+   borne sa propre hauteur, et la colonne défile pour eux. */
+.app-doc__outils .app-outils--formules .fr-panel__body,
+.app-doc__outils .app-outils--champs .fr-panel__body,
+.app-doc__outils .app-outils--effets .fr-panel__body,
+.app-doc__outils .app-outils--formation .fr-panel__body,
+.app-doc__outils .app-outils--controles .fr-panel__body {
+  overflow: auto;
+  max-height: min(48vh, 30rem);
+}
+
+/* ------------------------------------------------------------------ */
+/* Verrouillage d'écran (NC-0009)                                      */
+/* ------------------------------------------------------------------ */
+
+.app-lock {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--background-default-grey) 92%, black);
+  backdrop-filter: blur(6px);
+}
+
+.app-lock[hidden] { display: none; }
+
+.app-lock__box {
+  max-width: 32rem;
+  padding: 2rem;
+  border-radius: var(--app-radius);
+  background: var(--background-default-grey);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+  text-align: center;
+}
+
+/* ------------------------------------------------------------------ */
+/* Impression                                                          */
+/* ------------------------------------------------------------------ */
+
+@media print {
+  .fr-header,
+  .app-navbar,
+  .fr-footer,
+  .app-split__aside,
+  .app-tabs,
+  .app-page-head__actions,
+  .app-env-banner,
+  .app-toasts {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+  }
+
+  .fr-panel {
+    border: 0;
+    box-shadow: none;
+    break-inside: avoid;
+  }
+
+  .app-doc-preview iframe {
+    height: 100vh !important;
+  }
+}
