@@ -2094,14 +2094,18 @@ html[data-fr-theme="dark"].app-charte-neutre {
   position: relative;
 }
 
-/* Le select natif masqué ne doit jamais rester visible : DSFR lui donne
-   "display: block" (regle ".fr-select", specificite 0,1,0), qui l'emporte sur
-   le "[hidden]" de l'agent utilisateur - toute regle d'auteur gagne contre le
-   navigateur. Le menu natif restait donc peint sous la combobox, et la colonne
-   "Intervenants" montrait deux champs superposes de la meme valeur. Cette
-   regle, de portee egale avec l'attribut en plus (0,1,1), le tient cache. */
-select.fr-select[hidden] {
-  display: none;
+/* Un element porte l'attribut "hidden" pour ne pas se voir - or toute regle
+   d'auteur l'emporte sur le "[hidden] { display: none }" du navigateur, quelle
+   que soit sa specificite. DSFR donne "display: block" a ".fr-select" et
+   ".fr-hint-text", "inline-flex" aux boutons ; l'application donne
+   "inline-block" a son indicateur d'activite et "flex" a sa barre d'etat
+   d'export. Le select masque par la recherche restait peint sous la combobox
+   (deux champs superposes dans la colonne "Intervenants"), et chaque bloc
+   d'export affichait son rond moulinant en permanence. Cette regle retablit
+   l'attribut sur tous les elements a la fois, et cesse de s'appliquer des
+   que l'attribut disparait : l'element reprend alors la regle de sa classe. */
+[hidden] {
+  display: none !important;
 }
 
 .app-combobox__champ {
