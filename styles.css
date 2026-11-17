@@ -2094,6 +2094,16 @@ html[data-fr-theme="dark"].app-charte-neutre {
   position: relative;
 }
 
+/* Le select natif masqué ne doit jamais rester visible : DSFR lui donne
+   "display: block" (regle ".fr-select", specificite 0,1,0), qui l'emporte sur
+   le "[hidden]" de l'agent utilisateur - toute regle d'auteur gagne contre le
+   navigateur. Le menu natif restait donc peint sous la combobox, et la colonne
+   "Intervenants" montrait deux champs superposes de la meme valeur. Cette
+   regle, de portee egale avec l'attribut en plus (0,1,1), le tient cache. */
+select.fr-select[hidden] {
+  display: none;
+}
+
 .app-combobox__champ {
   padding-right: 2.75rem;
   text-overflow: ellipsis;
